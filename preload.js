@@ -1,14 +1,25 @@
-// preload.js
+const { contextBridge, ipcRenderer } = require('electron');
 
-// All the Node.js APIs are available in the preload process.
-// It has the same sandbox as a Chrome extension.
+// Экспонируем API для рендера до загрузки DOM
+contextBridge.exposeInMainWorld('api', {
+    runContainer: (cfg) => ipcRenderer.send('run-container', cfg),
+    onLog: (cb) => ipcRenderer.on('container-log', (_evt, line) => cb(line)),
+    onDone: (cb) => ipcRenderer.once('container-done', () => cb()),
+});
+
+// После загрузки страницы вставляем версии зависимостей
 window.addEventListener('DOMContentLoaded', () => {
+    /**
+     * Заменяет текст в элементе с указанным ID
+     * @param {string} selector - ID элемента
+     * @param {string} text - текст для вставки
+     */
     const replaceText = (selector, text) => {
-        const element = document.getElementById(selector)
-        if (element) element.innerText = text
-    }
+        const el = document.getElementById(selector);
+        if (el) el.innerText = text;
+    };
 
-    for (const dependency of ['chrome', 'node', 'electron']) {
-        replaceText(`${dependency}-version`, process.versions[dependency])
+    for (const name of ['chrome', 'node', 'electron']) {
+        replaceText(`${name}-version`, process.versions[name] || 'unknown');
     }
-})
+});

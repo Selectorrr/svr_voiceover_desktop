@@ -1,19 +1,43 @@
-<!--index.html-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-  <title>Hello World!</title>
+  <!-- Добавили разрешение на inline-стили -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Voiceover GUI</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    label { display: block; margin: 8px 0; }
+    input { width: 300px; }
+    #logs {
+      margin-top: 16px;
+      padding: 8px;
+      height: 300px;
+      overflow-y: auto;
+      background: #f0f0f0;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+  </style>
 </head>
 <body>
-<h1>Hello World!</h1>
-We are using Node.js <span id="node-version"></span>,
-Chromium <span id="chrome-version"></span>,
-and Electron <span id="electron-version"></span>.
+<h1>Voiceover GUI</h1>
+<form id="run-form">
+  <label>API Key: <input type="text" id="api_key" required></label>
+  <label>Output Format (--ext): <input type="text" id="ext" value="ogg"></label>
+  <label>Sample Length (--tone_sample_len): <input type="number" id="tone_sample_len" value="15000"></label>
+  <label>Batch Size (--batch_size): <input type="number" id="batch_size" value="20"></label>
+  <label>Workers (--n_jobs): <input type="number" id="n_jobs"></label>
+  <label>Providers (--providers):
+    <input type="text" id="providers" value="CUDAExecutionProvider CPUExecutionProvider">
+  </label>
+  <button type="submit">Run</button>
+</form>
 
-<!-- You can also require other files to run in this process -->
+<div id="logs"></div>
+
+<!-- Подключаем рендер-скрипт -->
 <script src="./renderer.js"></script>
 </body>
 </html>
