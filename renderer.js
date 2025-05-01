@@ -8,7 +8,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const clearLogsBtn   = document.getElementById('clearLogsBtn');
     const copyLogsBtn    = document.getElementById('copyLogsBtn');
     const logsEl         = document.getElementById('logs');
-    const progressBar    = document.getElementById('progressBar');
+    const progressInline = document.getElementById('progressInline');
     const toastContainer = document.getElementById('toastContainer');
     const infoModal      = new bootstrap.Modal(document.getElementById('infoModal'));
     const infoModalBody  = document.getElementById('infoModalBody');
@@ -79,13 +79,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // UI state
     function startRun(){
-        runBtn.disabled=true; runSpinner.classList.remove('d-none');
-        progressBar.classList.remove('d-none');
-        stopBtn.disabled=false; stopSpinner.classList.add('d-none');
+        runBtn.disabled = true;
+        runSpinner.classList.remove('d-none');
+        progressInline.classList.remove('d-none');
+        stopBtn.disabled = false;
+        stopSpinner.classList.add('d-none');
     }
     function endRun(){
-        runBtn.disabled=false; runSpinner.classList.add('d-none');
-        progressBar.classList.add('d-none');
+        runBtn.disabled = false;
+        runSpinner.classList.add('d-none');
+        progressInline.classList.add('d-none');
     }
 
     // Stop
