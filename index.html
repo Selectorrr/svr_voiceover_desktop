@@ -1,43 +1,199 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <!-- Добавили разрешение на inline-стили -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
-  <title>Voiceover GUI</title>
+        content="
+          default-src 'self';
+          script-src 'self' https://cdn.jsdelivr.net;
+          style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;
+          font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com;
+          img-src 'self' data:;
+        ">
+  <title>Компактный генератор озвучки</title>
+  <!-- Bootstrap CSS + Icons + Animate -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+        rel="stylesheet">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" />
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    label { display: block; margin: 8px 0; }
-    input { width: 300px; }
-    #logs {
-      margin-top: 16px;
-      padding: 8px;
-      height: 300px;
-      overflow-y: auto;
-      background: #f0f0f0;
-      white-space: pre-wrap;
-      font-family: monospace;
-    }
+    .rotate-icon { transition: transform .3s ease; }
+    .collapsed + .rotate-icon { transform: rotate(0); }
+    .rotate-icon { transform: rotate(90deg); }
+    /* Модалки будем светлыми самостоятельно */
   </style>
 </head>
-<body>
-<h1>Voiceover GUI</h1>
-<form id="run-form">
-  <label>API Key: <input type="text" id="api_key" required></label>
-  <label>Output Format (--ext): <input type="text" id="ext" value="ogg"></label>
-  <label>Sample Length (--tone_sample_len): <input type="number" id="tone_sample_len" value="15000"></label>
-  <label>Batch Size (--batch_size): <input type="number" id="batch_size" value="20"></label>
-  <label>Workers (--n_jobs): <input type="number" id="n_jobs"></label>
-  <label>Providers (--providers):
-    <input type="text" id="providers" value="CUDAExecutionProvider CPUExecutionProvider">
-  </label>
-  <button type="submit">Run</button>
-</form>
+<body class="bg-body text-body">
+<div class="container py-3">
+  <!-- Header & theme toggle -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-mic-fill me-1"></i>Генератор озвучки</h4>
+    <button id="themeToggle" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-sun-fill"></i>
+    </button>
+  </div>
 
-<div id="logs"></div>
+  <form id="run-form" class="row g-3 needs-validation" novalidate>
+    <!-- API Key -->
+    <div class="col-md-6">
+      <label for="api_key" class="form-label small">
+        <i class="bi bi-key-fill me-1"></i>Ключ доступа
+      </label>
+      <div class="input-group input-group-sm">
+        <input type="text" id="api_key"
+               class="form-control form-control-sm"
+               required placeholder="Ключ доступа">
+        <span class="input-group-text info-trigger"
+              data-info="Ваш уникальный API-ключ из личного кабинета.">
+            <i class="bi bi-info-circle-fill"></i>
+          </span>
+        <div class="invalid-feedback">Укажите API-ключ</div>
+      </div>
+    </div>
 
-<!-- Подключаем рендер-скрипт -->
+    <!-- Format -->
+    <div class="col-md-6">
+      <label for="ext" class="form-label small">
+        <i class="bi bi-file-earmark-music-fill me-1"></i>Формат
+      </label>
+      <div class="input-group input-group-sm">
+        <input type="text" id="ext"
+               class="form-control form-control-sm"
+               value="ogg" required placeholder="ogg, mp3">
+        <span class="input-group-text info-trigger"
+              data-info="Формат выходного файла: ogg, mp3 или wav.">
+            <i class="bi bi-info-circle-fill"></i>
+          </span>
+        <div class="invalid-feedback">Укажите формат</div>
+      </div>
+    </div>
+
+    <!-- Advanced options -->
+    <div class="col-12">
+      <a class="btn btn-link p-0 small collapsed" data-bs-toggle="collapse" href="#advancedOptions"
+         role="button" aria-expanded="false">
+        <i class="bi bi-sliders rotate-icon me-1"></i>Доп. настройки
+      </a>
+      <div class="collapse mt-2 animate__animated animate__fadeIn" id="advancedOptions">
+        <div class="card p-3">
+          <div class="row g-3">
+            <!-- Length -->
+            <div class="col-md-4">
+              <label for="tone_sample_len" class="form-label x-small">
+                <i class="bi bi-clock-history me-1"></i>Длина, мс
+              </label>
+              <div class="input-group input-group-sm">
+                <input type="number" id="tone_sample_len"
+                       class="form-control form-control-sm"
+                       value="15000">
+                <span class="input-group-text info-trigger"
+                      data-info="Максимальная длительность одного семпла в миллисекундах.">
+                    <i class="bi bi-info-circle-fill"></i>
+                  </span>
+              </div>
+            </div>
+            <!-- Batch size -->
+            <div class="col-md-4">
+              <label for="batch_size" class="form-label x-small">
+                <i class="bi bi-stack me-1"></i>Размер
+              </label>
+              <div class="input-group input-group-sm">
+                <input type="number" id="batch_size"
+                       class="form-control form-control-sm"
+                       value="20">
+                <span class="input-group-text info-trigger"
+                      data-info="Количество фраз в одной партии.">
+                    <i class="bi bi-info-circle-fill"></i>
+                  </span>
+              </div>
+            </div>
+            <!-- Workers -->
+            <div class="col-md-4">
+              <label for="n_jobs" class="form-label x-small">
+                <i class="bi bi-gear-fill me-1"></i>Потоки
+              </label>
+              <div class="input-group input-group-sm">
+                <input type="number" id="n_jobs"
+                       class="form-control form-control-sm">
+                <span class="input-group-text info-trigger"
+                      data-info="Число параллельных рабочих процессов.">
+                    <i class="bi bi-info-circle-fill"></i>
+                  </span>
+              </div>
+            </div>
+            <!-- Providers -->
+            <div class="col-12">
+              <label for="providers" class="form-label x-small">
+                <i class="bi bi-clouds-fill me-1"></i>Провайдеры
+              </label>
+              <div class="input-group input-group-sm">
+                <input type="text" id="providers"
+                       class="form-control form-control-sm"
+                       value="CUDAExecutionProvider CPUExecutionProvider">
+                <span class="input-group-text info-trigger"
+                      data-info="Движки озвучки через пробел.">
+                    <i class="bi bi-info-circle-fill"></i>
+                  </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="col-12 d-flex justify-content-end align-items-center">
+      <button id="clearLogsBtn" type="button" class="btn btn-outline-secondary btn-sm me-2">
+        <i class="bi bi-trash"></i>
+      </button>
+      <button id="runBtn" type="submit" class="btn btn-success btn-sm">
+        <i class="bi bi-play-fill"></i>
+        <span id="runSpinner" class="spinner-border spinner-border-sm ms-1 d-none"></span>
+      </button>
+    </div>
+  </form>
+
+  <br/>
+  <!-- Progress bar -->
+  <div class="progress mb-3 d-none" id="progressBar">
+    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:100%"></div>
+  </div>
+
+  <!-- Logs -->
+  <div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-journal-text me-1"></i>Логи</span>
+      <button id="copyLogsBtn" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-clipboard"></i>
+      </button>
+    </div>
+    <div id="logs" class="card-body"
+         style="height:200px; overflow:auto; font-family:monospace; font-size:.85rem;">
+    </div>
+  </div>
+</div>
+
+<!-- Info Modal -->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="infoModalLabel">Подсказка</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="infoModalBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:11">
+  <div id="toastContainer" class="toast-container"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="./renderer.js"></script>
 </body>
 </html>
