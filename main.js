@@ -1,3 +1,4 @@
+// main.js
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const Docker = require('dockerode');
@@ -35,7 +36,11 @@ function createWindow() {
     console.log('[Main] Creating main window');
     mainWindow = new BrowserWindow({
         width: 800,
-        height: 700,
+        height: 640,
+        frame: false,
+        autoHideMenuBar: true,
+        resizable: false,
+        maximizable: false,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -43,7 +48,7 @@ function createWindow() {
         },
     });
 
-    // Открываем DevTools для отладки
+    // Открываем DevTools для отладки (опционально)
     mainWindow.webContents.openDevTools({ mode: 'detach' });
 
     mainWindow.loadFile('index.html');
@@ -59,9 +64,7 @@ function createWindow() {
  */
 async function pullImage(image) {
     const wc = mainWindow.webContents;
-    wc.send('container-log', `[Main] pullImage: pull "${image}"`);
-    console.log(`[Main] pullImage: pulling "${image}"`);
-
+    wc.send('container-log', `[Main] pullImage: pulling "${image}"`);
     try {
         const bar = new ProgressBar({
             text: `Pulling ${image}`,
@@ -72,18 +75,17 @@ async function pullImage(image) {
         await new Promise((resolve, reject) => {
             docker.modem.followProgress(
                 stream,
-                (err) => {
+                err => {
                     if (err) {
                         console.error('[Main] pullImage error', err);
                         wc.send('container-log', `❌ pullImage error: ${err.message}`);
                         return reject(err);
                     }
                     bar.setCompleted();
-                    console.log(`[Main] pullImage: obtained "${image}"`);
                     wc.send('container-log', `[Main] pullImage: obtained "${image}"`);
                     resolve();
                 },
-                (evt) => {
+                evt => {
                     bar.detail = evt.status;
                     if (evt.progressDetail && evt.progressDetail.total) {
                         bar.value = (evt.progressDetail.current / evt.progressDetail.total) * 100;
@@ -103,7 +105,6 @@ async function pullImage(image) {
  */
 async function runContainer(cfg) {
     const wc = mainWindow.webContents;
-    console.log('[Main] runContainer called with config:', cfg);
     wc.send('container-log', `[Main] runContainer config: ${JSON.stringify(cfg)}`);
 
     const image = 'selector/voiceover';
@@ -117,7 +118,7 @@ async function runContainer(cfg) {
             wc.send('container-log', `[Main] Image "${image}" is local, skipping pull.`);
         }
 
-        // Формируем аргументы для entrypoint.py
+        // Формируем аргументы
         const args = [
             '--api_key', cfg.api_key,
             '--ext', cfg.ext,
@@ -125,33 +126,30 @@ async function runContainer(cfg) {
             '--batch_size', String(cfg.batch_size),
         ];
         if (cfg.n_jobs) args.push('--n_jobs', String(cfg.n_jobs));
-        if (Array.isArray(cfg.providers) && cfg.providers.length) args.push('--providers', ...cfg.providers);
+        if (Array.isArray(cfg.providers) && cfg.providers.length) {
+            args.push('--providers', ...cfg.providers);
+        }
 
-        console.log('[Main] Container args:', args);
         wc.send('container-log', `[Main] Container args: ${args.join(' ')}`);
 
-        // Создаём контейнер, передавая только аргументы (ENTRYPOINT уже задан в образе)
+        // Создаём контейнер
         const container = await docker.createContainer({
             Image: image,
             Cmd: args,
             HostConfig: { AutoRemove: true },
         });
-        console.log('[Main] Created container ID:', container.id);
         wc.send('container-log', `[Main] Created container ID: ${container.id}`);
 
         const stream = await container.attach({ stream: true, stdout: true, stderr: true });
         stream.on('data', chunk => {
             const msg = chunk.toString();
-            console.log('[Container]', msg.trim());
             wc.send('container-log', msg);
         });
 
         await container.start();
-        console.log('[Main] Container started');
         wc.send('container-log', `[Main] Container started`);
 
         await container.wait();
-        console.log('[Main] Container finished execution');
         wc.send('container-log', `[Main] Container finished execution`);
         wc.send('container-done');
     } catch (err) {
@@ -162,15 +160,25 @@ async function runContainer(cfg) {
 
 // Запуск приложения
 app.whenReady().then(() => {
-    console.log('[Main] App is ready');
     createWindow();
+
     ipcMain.on('run-container', (_evt, cfg) => {
-        console.log('[Main] Received run-container');
         runContainer(cfg);
+    });
+
+    // Обработчик закрытия окна
+    ipcMain.on('close-window', () => {
+        const w = BrowserWindow.getFocusedWindow();
+        if (w) w.close();
     });
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+
+    ipcMain.on('minimize-window', () => {
+        const w = BrowserWindow.getFocusedWindow();
+        if (w) w.minimize();
     });
 });
 
