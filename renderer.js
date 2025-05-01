@@ -107,7 +107,7 @@ window.addEventListener('DOMContentLoaded', () => {
             endRun(); showToast(line,'danger');
         }
         if (line.includes('Контейнер остановлен и удалён.')) {
-            stopBtn.disabled=false; stopSpinner.classList.add('d-none');
+            stopBtn.disabled=true; stopSpinner.classList.add('d-none');
         }
     });
     window.api.onDone(() => {
