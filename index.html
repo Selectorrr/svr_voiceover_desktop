@@ -24,7 +24,6 @@
             padding: 0;
         }
 
-        /* Заголовок draggable с линией снизу */
         #titleBar {
             position: sticky;
             top: 0;
@@ -40,13 +39,11 @@
             border-bottom: 1px solid var(--bs-border-color);
         }
 
-        /* Интерактивные элементы не draggable */
         #titleBar .no-drag,
         button, input, select, .form-control, .form-select, .input-group-text {
             -webkit-app-region: no-drag;
         }
 
-        /* Убираем рамки у кнопок в заголовке */
         #titleBar .btn {
             border: none !important;
             box-shadow: none !important;
@@ -54,7 +51,6 @@
             padding: 0 4px;
         }
 
-        /* Спойлер-иконка */
         .rotate-icon {
             transition: transform .3s ease;
         }
@@ -68,33 +64,29 @@
         }
 
         .bi-info-circle-fill {
-            cursor: pointer
+            cursor: pointer;
         }
 
         .container {
-            padding-top: 32px; /* ровно высота titleBar */
+            padding-top: 32px;
         }
     </style>
 </head>
 <body class="bg-body text-body">
 <div id="titleBar">
     <div class="d-flex align-items-center">
-        <i class="bi bi-mic-fill me-1"></i>
-        <span>SVR_VOICEOVER</span>
+        <i class="bi bi-mic-fill me-1"></i><span>SVR_VOICEOVER</span>
     </div>
     <div class="d-flex no-drag">
-        <button id="themeToggle" class="btn btn-sm">
-            <i class="bi bi-sun-fill"></i>
-        </button>
+        <button id="themeToggle" class="btn btn-sm"><i class="bi bi-sun-fill"></i></button>
         <button id="minimizeBtn" class="btn btn-sm mx-1"><i class="bi bi-dash-lg"></i></button>
-        <button id="closeBtn" class="btn btn-sm ms-2">
-            <i class="bi bi-x-lg"></i>
-        </button>
+        <button id="closeBtn" class="btn btn-sm"><i class="bi bi-x-lg"></i></button>
     </div>
 </div>
 
 <div class="container pt-4">
     <form id="run-form" class="row g-3 needs-validation" novalidate>
+
         <!-- API Key -->
         <div class="col-md-6">
             <label for="api_key" class="form-label small">
@@ -109,21 +101,30 @@
                 <div class="invalid-feedback">Укажите API-ключ</div>
             </div>
         </div>
-        <!-- Format -->
+
+        <!-- Формат -->
         <div class="col-md-6">
             <label for="ext" class="form-label small">
                 <i class="bi bi-file-earmark-music-fill me-1"></i>Формат
             </label>
             <div class="input-group input-group-sm">
-                <input type="text" id="ext" class="form-control form-control-sm" value="ogg" required
-                       placeholder="ogg, mp3">
-                <span class="input-group-text info-trigger" data-info="Формат выходного файла: ogg, mp3 или wav.">
+                <select id="ext" class="form-select form-select-sm" required>
+                    <option value="ogg" selected>ogg</option>
+                    <option value="wav">wav</option>
+                    <option value="flac">flac</option>
+                    <option value="aiff">aiff</option>
+                    <option value="au">au</option>
+                    <option value="raw">raw</option>
+                </select>
+                <span class="input-group-text info-trigger"
+                      data-info="Выберите формат выходного файла (по звуковой библиотеке SoundFile).">
             <i class="bi bi-info-circle-fill"></i>
           </span>
                 <div class="invalid-feedback">Укажите формат</div>
             </div>
         </div>
-        <!-- Advanced options -->
+
+        <!-- Дополнительные настройки -->
         <div class="col-12">
             <a class="btn btn-link p-0 small collapsed" data-bs-toggle="collapse" href="#advancedOptions"
                role="button" aria-expanded="false">
@@ -132,97 +133,86 @@
             <div class="collapse mt-2 animate__animated animate__fadeIn" id="advancedOptions">
                 <div class="card p-3">
                     <div class="row g-3">
-                        <div class="col-md-4">
-                            <label for="tone_sample_len" class="form-label x-small">
-                                <i class="bi bi-clock-history me-1"></i>Длина, мс
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <input type="number" id="tone_sample_len" class="form-control form-control-sm"
-                                       value="15000">
-                                <span class="input-group-text info-trigger"
-                                      data-info="Максимальная длительность одного семпла в миллисекундах.">
-                    <i class="bi bi-info-circle-fill"></i>
-                  </span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                        <!-- Размер группы -->
+                        <div class="col-md-3">
                             <label for="batch_size" class="form-label x-small">
-                                <i class="bi bi-stack me-1"></i>Размер
+                                <i class="bi bi-stack me-1"></i>Размер партии
                             </label>
                             <div class="input-group input-group-sm">
-                                <input type="number" id="batch_size" class="form-control form-control-sm" value="20">
+                                <input type="number" id="batch_size"
+                                       class="form-control form-control-sm"
+                                       value="20" min="1">
                                 <span class="input-group-text info-trigger"
-                                      data-info="Количество фраз в одной партии.">
+                                      data-info="Сколько фраз обрабатывать за раз.">
                     <i class="bi bi-info-circle-fill"></i>
                   </span>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <!-- Потоки -->
+                        <div class="col-md-3">
                             <label for="n_jobs" class="form-label x-small">
                                 <i class="bi bi-gear-fill me-1"></i>Потоки
                             </label>
                             <div class="input-group input-group-sm">
-                                <input type="number" id="n_jobs" class="form-control form-control-sm">
+                                <input type="number" id="n_jobs"
+                                       class="form-control form-control-sm"
+                                       value="1" min="1">
                                 <span class="input-group-text info-trigger"
-                                      data-info="Число параллельных рабочих процессов.">
+                                      data-info="Число параллельных задач (по умолчанию один).">
                     <i class="bi bi-info-circle-fill"></i>
                   </span>
                             </div>
                         </div>
-                        <div class="col-12">
-                            <label for="providers" class="form-label x-small">
-                                <i class="bi bi-clouds-fill me-1"></i>Провайдеры
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" id="providers" class="form-control form-control-sm"
-                                       value="CUDAExecutionProvider CPUExecutionProvider">
-                                <span class="input-group-text info-trigger"
-                                      data-info="Движки озвучки через пробел.">
-                    <i class="bi bi-info-circle-fill"></i>
-                  </span>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- CSV-разделитель -->
-                    <div class="col-md-4 d-flex align-items-start">
-                        <div class="flex-grow-1">
+                        <!-- CSV-разделитель -->
+                        <div class="col-md-3">
                             <label for="csv_delimiter" class="form-label x-small">
                                 <i class="bi bi-slash me-1"></i>CSV-разделитель
                             </label>
                             <div class="input-group input-group-sm">
-                                <input type="text"
-                                       id="csv_delimiter"
+                                <input type="text" id="csv_delimiter"
                                        class="form-control form-control-sm"
-                                       value=","
-                                       maxlength="1">
+                                       value="," maxlength="1">
                                 <span class="input-group-text info-trigger"
-                                      data-info="Символ, который будет разделять колонки в CSV (по умолчанию «,»).">
-        <i class="bi bi-info-circle-fill"></i>
-      </span>
+                                      data-info="Символ-разделитель колонок в CSV (по умолчанию «,»).">
+                    <i class="bi bi-info-circle-fill"></i>
+                  </span>
+                            </div>
+                        </div>
+                        <!-- Устройство -->
+                        <div class="col-md-3">
+                            <label for="device" class="form-label x-small">
+                                <i class="bi bi-hdd-network-fill me-1"></i>Устройство
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <select id="device" class="form-select form-select-sm">
+                                    <option value="CUDAExecutionProvider" selected>GPU (CUDA)</option>
+                                    <option value="CPUExecutionProvider">CPU</option>
+                                </select>
+                                <span class="input-group-text info-trigger"
+                                      data-info="Выберите устройство: GPU или CPU.">
+                    <i class="bi bi-info-circle-fill"></i>
+                  </span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Рабочая папка -->
         <div class="col-md-12 d-flex align-items-center">
             <label for="workdir" class="form-label small me-2">
                 <i class="bi bi-folder2-open me-1"></i>Рабочая папка
             </label>
-            <input type="text"
-                   id="workdir"
-                   class="form-control form-control-sm me-2"
-                   placeholder="Не выбрано"
-                   readonly>
-            <button id="chooseDirBtn" type="button" class="btn btn-outline-secondary btn-sm no-drag">
-                Выбрать...
-            </button>
+            <input type="text" id="workdir" class="form-control form-control-sm me-2" placeholder="Не выбрано" readonly>
+            <button id="chooseDirBtn" type="button" class="btn btn-outline-secondary btn-sm no-drag">Выбрать…</button>
         </div>
-        <!-- Controls -->
+
+        <!-- Кнопки управления -->
         <div class="col-12 d-flex justify-content-end align-items-center">
             <button id="stopBtn" type="button" class="btn btn-danger btn-sm me-2 no-drag" disabled>
                 <i class="bi bi-stop-fill"></i>
-                <span id="stopSpinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status" aria-hidden="true"></span>
+                <span id="stopSpinner" class="spinner-border spinner-border-sm ms-1 d-none"></span>
             </button>
             <button id="clearLogsBtn" type="button" class="btn btn-outline-secondary btn-sm me-2">
                 <i class="bi bi-trash"></i>
@@ -234,13 +224,13 @@
         </div>
     </form>
 
-    <br/>
-
-    <div class="progress mb-3 d-none" id="progressBar">
+    <!-- Прогресс-бар -->
+    <div class="progress mb-3 d-none" id="progressBar" style="margin-top: 24px">
         <div class="progress-bar progress-bar-striped progress-bar-animated"
              role="progressbar" style="width:100%"></div>
     </div>
 
+    <!-- Логи -->
     <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span><i class="bi bi-journal-text me-1"></i>Логи</span>
@@ -249,17 +239,16 @@
             </button>
         </div>
         <pre id="logs" class="card-body"
-             style="height:200px; overflow:auto; font-family:monospace; font-size:.85rem;">
-        </pre>
+             style="height:200px; overflow:auto; font-family:monospace; font-size:.85rem;"></pre>
     </div>
 </div>
 
-<!-- Info Modal -->
-<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+<!-- Модал подсказок -->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="infoModalLabel">Подсказка</h5>
+                <h5 class="modal-title">Подсказка</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="infoModalBody"></div>
@@ -267,12 +256,8 @@
     </div>
 </div>
 
-<!-- Toast container -->
-<div
-        id="toastContainer"
-        class="toast-container position-fixed bottom-0 start-auto end-0 p-3"
-        style="z-index:1100;"
-></div>
+<!-- Toast контейнер -->
+<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1100;"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="./renderer.js"></script>

@@ -17,30 +17,28 @@ window.addEventListener('DOMContentLoaded', () => {
     const minimizeBtn    = document.getElementById('minimizeBtn');
     const chooseDirBtn   = document.getElementById('chooseDirBtn');
     const workdirInput   = document.getElementById('workdir');
-    const csvDelimInput  = document.getElementById('csv_delimiter');
 
     // Тема
-    themeToggle.addEventListener('click', () => {
-        const html = document.documentElement;
-        html.dataset.bsTheme = html.dataset.bsTheme === 'dark' ? 'light' : 'dark';
-    });
+    themeToggle.onclick = () => {
+        document.documentElement.dataset.bsTheme =
+            document.documentElement.dataset.bsTheme === 'dark' ? 'light' : 'dark';
+    };
+    // Окно
+    closeBtn.onclick    = () => window.api.closeWindow();
+    minimizeBtn.onclick = () => window.api.minimizeWindow();
 
-    // Закрыть/свернуть
-    closeBtn.addEventListener('click',   () => window.api.closeWindow());
-    minimizeBtn.addEventListener('click',() => window.api.minimizeWindow());
-
-    // Выбор директории
-    chooseDirBtn.addEventListener('click', async () => {
+    // Выбор папки
+    chooseDirBtn.onclick = async () => {
         const dir = await window.api.selectWorkdir();
         if (dir) workdirInput.value = dir;
-    });
+    };
 
     // Подсказки
     document.querySelectorAll('.info-trigger').forEach(el => {
-        el.addEventListener('click', () => {
+        el.onclick = () => {
             infoModalBody.innerText = el.dataset.info;
             infoModal.show();
-        });
+        };
     });
 
     // Горячие клавиши
@@ -55,102 +53,82 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     // Логи
-    clearLogsBtn.addEventListener('click', () => {
-        logsEl.textContent = '';
-    });
-    copyLogsBtn.addEventListener('click', () => {
+    clearLogsBtn.onclick = () => { logsEl.textContent = ''; };
+    copyLogsBtn.onclick  = () => {
         navigator.clipboard.writeText(logsEl.textContent);
         showToast('Логи скопированы', 'success');
-    });
+    };
 
-    // Показать тост
-    function showToast(msg, type = 'info') {
-        const toastEl = document.createElement('div');
-        toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
-        toastEl.setAttribute('role', 'alert');
-        toastEl.setAttribute('aria-live', 'assertive');
-        toastEl.setAttribute('aria-atomic', 'true');
-        toastEl.innerHTML = `
+    function showToast(msg, type='info') {
+        const t = document.createElement('div');
+        t.className = `toast align-items-center text-white bg-${type} border-0`;
+        t.setAttribute('role','alert');
+        t.setAttribute('aria-live','assertive');
+        t.setAttribute('aria-atomic','true');
+        t.innerHTML = `
       <div class="d-flex align-items-center">
         <div class="toast-body">${msg}</div>
-        <button type="button"
-                class="btn-close btn-close-white ms-auto me-2"
+        <button type="button" class="btn-close btn-close-white ms-auto me-2"
                 data-bs-dismiss="toast" aria-label="Закрыть"></button>
       </div>`;
-        toastContainer.append(toastEl);
-        const t = new bootstrap.Toast(toastEl, { delay: 3000 });
-        t.show();
-        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+        toastContainer.append(t);
+        const bsToast = new bootstrap.Toast(t,{delay:3000});
+        bsToast.show();
+        t.addEventListener('hidden.bs.toast',()=>t.remove());
     }
 
-    // UI при старте/конце работы
-    function startRun() {
-        runBtn.disabled = true;
-        runSpinner.classList.remove('d-none');
+    // UI state
+    function startRun(){
+        runBtn.disabled=true; runSpinner.classList.remove('d-none');
         progressBar.classList.remove('d-none');
-        // разрешаем стоп
-        stopBtn.disabled = false;
-        stopSpinner.classList.add('d-none');
+        stopBtn.disabled=false; stopSpinner.classList.add('d-none');
     }
-    function endRun() {
-        runBtn.disabled = false;
-        runSpinner.classList.add('d-none');
+    function endRun(){
+        runBtn.disabled=false; runSpinner.classList.add('d-none');
         progressBar.classList.add('d-none');
     }
 
-    // Стоп-кнопка
-    stopBtn.addEventListener('click', () => {
+    // Stop
+    stopBtn.onclick = () => {
         stopBtn.disabled = true;
         stopSpinner.classList.remove('d-none');
         window.api.stopContainer();
-    });
+    };
 
-    // IPC от main
-    if (!window.api) {
-        console.error('API не найдено');
-        return;
-    }
+    // IPC
+    if (!window.api) return console.error('API не найдено');
     window.api.onLog(line => {
         logsEl.textContent += line + '\n';
         logsEl.scrollTop = logsEl.scrollHeight;
         if (line.startsWith('❌')) {
-            endRun();
-            showToast(line, 'danger');
+            endRun(); showToast(line,'danger');
         }
         if (line.includes('Контейнер остановлен и удалён.')) {
-            stopBtn.disabled = false;
-            stopSpinner.classList.add('d-none');
+            stopBtn.disabled=false; stopSpinner.classList.add('d-none');
         }
     });
     window.api.onDone(() => {
-        showToast('Готово', 'success');
+        showToast('Готово','success');
         endRun();
-        // после полного завершения — блокируем стоп
         stopBtn.disabled = true;
     });
 
-    // Отправка формы
-    form.addEventListener('submit', e => {
+    // Submit
+    form.onsubmit = e => {
         e.preventDefault();
-        if (!form.checkValidity()) {
-            form.classList.add('was-validated');
-            return;
-        }
+        if (!form.checkValidity()) return form.classList.add('was-validated');
         form.classList.remove('was-validated');
-        logsEl.textContent = '';
+        logsEl.textContent='';
         startRun();
         const cfg = {
-            api_key:         document.getElementById('api_key').value,
-            ext:             document.getElementById('ext').value,
-            tone_sample_len: Number(document.getElementById('tone_sample_len').value),
-            batch_size:      Number(document.getElementById('batch_size').value),
-            n_jobs:          document.getElementById('n_jobs').value
-                ? Number(document.getElementById('n_jobs').value)
-                : null,
-            providers:       document.getElementById('providers').value.trim().split(/\s+/),
-            workdir:         workdirInput.value || null,
-            csv_delimiter:   csvDelimInput.value || ','
+            api_key:       document.getElementById('api_key').value,
+            ext:           document.getElementById('ext').value,
+            batch_size:    Number(document.getElementById('batch_size').value),
+            n_jobs:        Number(document.getElementById('n_jobs').value),
+            csv_delimiter: document.getElementById('csv_delimiter').value,
+            workdir:       workdirInput.value || null,
+            providers:     [ document.getElementById('device').value ]
         };
         window.api.runContainer(cfg);
-    });
+    };
 });

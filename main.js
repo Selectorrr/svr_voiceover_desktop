@@ -85,7 +85,6 @@ async function runContainer(cfg) {
         const args = [
             '--api_key', cfg.api_key,
             '--ext', cfg.ext,
-            '--tone_sample_len', String(cfg.tone_sample_len),
             '--batch_size', String(cfg.batch_size),
         ];
         if (cfg.n_jobs)        args.push('--n_jobs', String(cfg.n_jobs));
@@ -95,6 +94,16 @@ async function runContainer(cfg) {
         const hostConfig = { AutoRemove: true };
         if (cfg.workdir) {
             hostConfig.Binds = [`${cfg.workdir}:/workspace/SynthVoiceRu/workspace`];
+        }
+
+        // Если выбрано GPU, добавляем --gpus all
+        if (cfg.providers.includes('CUDAExecutionProvider')) {
+            hostConfig.DeviceRequests = [{
+                Driver: 'nvidia',
+                Count: -1,            // -1 означает "все GPU"
+                Capabilities: [['gpu']],
+            }];
+            wc.send('container-log', 'Используем все доступные GPU (--gpus all)');
         }
 
         wc.send('container-log', `Аргументы: ${args.join(' ')}`);
