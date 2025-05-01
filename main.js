@@ -16,8 +16,8 @@ let currentContainerId = null; // хранит ID активного конте�
 
 function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 800,
-        height: 640,
+        width: 575,
+        height: 700,
         frame: false,
         autoHideMenuBar: true,
         resizable: false,
