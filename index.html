@@ -70,6 +70,10 @@
         .container {
             padding-top: 32px;
         }
+
+        #stopBtn:disabled, #runBtn:disabled {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-body text-body">
@@ -218,13 +222,14 @@
 
         <!-- Контейнер управления + inline-прогресс -->
         <div class="col-12 d-flex justify-content-end align-items-center">
-            <!-- inline-прогресс, который растягивается -->
-            <div id="progressInline"
-                 class="progress flex-grow-1 me-2 d-none"
-                 style="height:0.5rem;">
-                <div class="progress-bar progress-bar-striped progress-bar-animated"
-                     role="progressbar"
-                     style="width:100%"></div>
+            <div class="d-flex align-items-center me-2 flex-grow-1">
+                <div id="progressInline"
+                     class="progress flex-grow-1 d-none"
+                     style="height:0.5rem;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                         role="progressbar" style="width:0%"></div>
+                </div>
+                <span id="progressLabel" class="small text-muted ms-2 d-none"></span>
             </div>
 
             <button id="stopBtn" type="button" class="btn btn-danger btn-sm me-2 no-drag" disabled>

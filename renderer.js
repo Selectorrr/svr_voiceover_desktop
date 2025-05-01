@@ -9,6 +9,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const copyLogsBtn    = document.getElementById('copyLogsBtn');
     const logsEl         = document.getElementById('logs');
     const progressInline = document.getElementById('progressInline');
+    const progressBar    = progressInline.querySelector('.progress-bar');
+    const progressLabel  = document.getElementById('progressLabel');
     const toastContainer = document.getElementById('toastContainer');
     const infoModal      = new bootstrap.Modal(document.getElementById('infoModal'));
     const infoModalBody  = document.getElementById('infoModalBody');
@@ -108,6 +110,22 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         if (line.includes('Контейнер остановлен и удалён.')) {
             stopBtn.disabled=true; stopSpinner.classList.add('d-none');
+        }
+        if (line.includes('Общий прогресс:')) {
+            // пример: "Общий прогресс:   45%|#####     | 360/80683 [00:45<10:20,  1.23s/it]"
+            const m = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)\]/);
+            if (m) {
+                const pct     = Number(m[1]);
+                const elapsed = m[2];      // "00:45"
+                const eta     = m[3];      // "10:20"
+                const rate    = m[4];      // "1.23s/it"
+                // обновляем бар
+                progressBar.style.width = pct + '%';
+                // показываем и обновляем лейбл
+                progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}`;
+                progressInline.classList.remove('d-none');
+                progressLabel.classList.remove('d-none');
+            }
         }
     });
     window.api.onDone(() => {
