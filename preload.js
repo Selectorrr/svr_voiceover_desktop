@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('api', {
     minimizeWindow: () => ipcRenderer.send('minimize-window'),
     closeWindow: ()         => ipcRenderer.send('close-window'),
     selectWorkdir: () => ipcRenderer.invoke('select-workdir'),
+    stopContainer: () => ipcRenderer.send('stop-container'),
+
 });
 
 window.addEventListener('DOMContentLoaded', () => {

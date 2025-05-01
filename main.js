@@ -5,21 +5,16 @@ const Docker = require('dockerode');
 const ProgressBar = require('electron-progressbar');
 const { PassThrough } = require('stream');
 
-// Выбор пути к Docker-сокету: на Windows — named pipe, иначе — Unix socket
 const dockerSocket = process.platform === 'win32'
     ? '//./pipe/docker_engine'
     : '/var/run/docker.sock';
 console.log(`Используется Docker-сокет: ${dockerSocket}`);
 
-// Инициализация клиента Docker
 const docker = new Docker({ socketPath: dockerSocket });
 let mainWindow;
+let currentContainerId = null; // хранит ID активного контейнера
 
-/**
- * Создаёт главное окно приложения без системной рамки
- */
 function createWindow() {
-    console.log('Создаётся главное окно');
     mainWindow = new BrowserWindow({
         width: 800,
         height: 640,
@@ -34,44 +29,43 @@ function createWindow() {
         },
     });
 
-    // Опционально открыть DevTools
-    // mainWindow.webContents.openDevTools({ mode: 'detach' });
-
     mainWindow.loadFile('index.html');
+
+    // При закрытии окна — пытаемся остановить контейнер
+    mainWindow.on('close', () => {
+        if (currentContainerId) {
+            const container = docker.getContainer(currentContainerId);
+            container.stop().catch(()=>{});
+            container.remove().catch(()=>{});
+            currentContainerId = null;
+        }
+    });
 }
 
-/**
- * Скачивает образ Docker с прогресс-баром и пишет ход в лог.
- * Образ будет загружен только один раз при отсутствии локально.
- * @param {string} image — имя Docker-образа
- */
 async function pullImage(image) {
     const wc = mainWindow.webContents;
-    wc.send('container-log', `Образ "${image}" не найден локально. Загрузка начнётся один раз…`);
-
+    wc.send('container-log', `Образ "${image}" не найден. Скачиваем…`);
     const bar = new ProgressBar({
-        text: `Загрузка образа ${image}`,
+        text: `Загрузка ${image}`,
         detail: 'Подготовка…',
         browserWindow: { parent: mainWindow, modal: true },
     });
-
     const stream = await docker.pull(image);
     await new Promise((resolve, reject) => {
         docker.modem.followProgress(
             stream,
             err => {
                 if (err) {
-                    console.error('Ошибка загрузки образа', err);
-                    wc.send('container-log', `❌ Ошибка при загрузке образа: ${err.message}`);
+                    wc.send('container-log', `❌ Ошибка скачивания: ${err.message}`);
                     return reject(err);
                 }
                 bar.setCompleted();
-                wc.send('container-log', `Образ "${image}" успешно загружен.`);
+                wc.send('container-log', `Образ "${image}" загружен.`);
                 resolve();
             },
             evt => {
                 bar.detail = evt.status;
-                if (evt.progressDetail && evt.progressDetail.total) {
+                if (evt.progressDetail?.total) {
                     bar.value = (evt.progressDetail.current / evt.progressDetail.total) * 100;
                 }
             }
@@ -79,81 +73,78 @@ async function pullImage(image) {
     });
 }
 
-/**
- * Запускает контейнер с указанными параметрами и транслирует логи в UI
- * @param {object} cfg — { api_key, ext, tone_sample_len, batch_size, n_jobs, providers }
- */
 async function runContainer(cfg) {
     const wc = mainWindow.webContents;
     wc.send('container-log', `Получена конфигурация: ${JSON.stringify(cfg)}`);
 
     const image = 'selector/voiceover';
     try {
-        // Проверяем наличие образа
         const imgs = await docker.listImages({ filters: { reference: [image] } });
-        if (imgs.length === 0) {
-            wc.send('container-log', `Образ "${image}" не найден, начинаю загрузку…`);
-            await pullImage(image);
-        } else {
-            wc.send('container-log', `Образ "${image}" найден локально, загрузку пропускаю.`);
-        }
+        if (!imgs.length) await pullImage(image);
 
-        // Формируем аргументы
         const args = [
             '--api_key', cfg.api_key,
             '--ext', cfg.ext,
             '--tone_sample_len', String(cfg.tone_sample_len),
             '--batch_size', String(cfg.batch_size),
         ];
-        if (cfg.n_jobs)    args.push('--n_jobs', String(cfg.n_jobs));
-        if (cfg.providers && cfg.providers.length) args.push('--providers', ...cfg.providers);
+        if (cfg.n_jobs)        args.push('--n_jobs', String(cfg.n_jobs));
+        if (cfg.providers)     args.push('--providers', ...cfg.providers);
+        if (cfg.csv_delimiter) args.push('--csv_delimiter', cfg.csv_delimiter);
 
         const hostConfig = { AutoRemove: true };
         if (cfg.workdir) {
-            hostConfig.Binds = [
-                `${cfg.workdir}:/workspace/SynthVoiceRu/workspace`
-            ];
-        }
-        if (cfg.csv_delimiter) {
-            args.push('--csv_delimiter', cfg.csv_delimiter);
+            hostConfig.Binds = [`${cfg.workdir}:/workspace/SynthVoiceRu/workspace`];
         }
 
-        wc.send('container-log', `Аргументы для контейнера: ${args.join(' ')}`);
+        wc.send('container-log', `Аргументы: ${args.join(' ')}`);
+        const container = await docker.createContainer({ Image: image, Cmd: args, HostConfig: hostConfig });
+        currentContainerId = container.id;
+        wc.send('container-log', `Создан контейнер ${container.id}`);
 
-        // Создаём контейнер
-        const container = await docker.createContainer({
-            Image: image,
-            Cmd: args,
-            HostConfig: hostConfig,
-        });
-        wc.send('container-log', `Создан контейнер с ID: ${container.id}`);
-
-        // Прикрепляемся и демультиплексируем потоки
         const raw = await container.attach({ stream: true, stdout: true, stderr: true });
         const out = new PassThrough(), errStream = new PassThrough();
         docker.modem.demuxStream(raw, out, errStream);
-
         out.on('data', chunk => wc.send('container-log', chunk.toString()));
         errStream.on('data', chunk => wc.send('container-log', chunk.toString()));
 
         await container.start();
         wc.send('container-log', 'Контейнер запущен');
-
         await container.wait();
-        wc.send('container-log', 'Контейнер завершил выполнение');
+        wc.send('container-log', 'Контейнер завершил работу');
         wc.send('container-done');
     } catch (err) {
-        console.error('Ошибка при запуске контейнера', err);
-        wc.send('container-log', `❌ Ошибка при запуске контейнера: ${err.message}`);
+        wc.send('container-log', `❌ Ошибка: ${err.message}`);
+    } finally {
+        currentContainerId = null;
     }
 }
 
-// Точка входа приложения
+ipcMain.on('stop-container', async () => {
+    if (!currentContainerId) {
+        mainWindow.webContents.send('container-log', '⚠ Нет активного контейнера.');
+        return;
+    }
+    const cid = currentContainerId;
+    currentContainerId = null;
+    try {
+        const container = docker.getContainer(cid);
+        await container.stop();
+        await container.remove().catch(()=>{});
+        mainWindow.webContents.send('container-log', '🛑 Контейнер остановлен и удалён.');
+    } catch (err) {
+        mainWindow.webContents.send('container-log', `❌ Не удалось остановить контейнер: ${err.message}`);
+    }
+});
+
+ipcMain.handle('select-workdir', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+    return canceled ? null : filePaths[0];
+});
+
 app.whenReady().then(async () => {
     try {
-        // Проверяем Docker-демон
         await docker.ping();
-        console.log('Docker-демон доступен');
         createWindow();
 
         ipcMain.on('run-container', (_e, cfg) => runContainer(cfg));
@@ -170,34 +161,19 @@ app.whenReady().then(async () => {
             if (BrowserWindow.getAllWindows().length === 0) createWindow();
         });
     } catch (err) {
-        console.error('Docker-демон недоступен', err);
-        // Предлагаем установить или запустить Docker
         const { response } = await dialog.showMessageBox({
             type: 'error',
             title: 'Docker недоступен',
             message: 'Не удалось подключиться к Docker-демону.',
-            detail:
-                `Ошибка: ${err.message}\n` +
-                'Установите Docker или запустите его (Docker Desktop / systemctl start docker).',
+            detail: `Ошибка: ${err.message}`,
             buttons: ['Скачать Docker', 'Закрыть'],
-            defaultId: 0,
-            cancelId: 1,
+            defaultId: 0, cancelId: 1,
         });
-        if (response === 0) {
-            shell.openExternal('https://www.docker.com/get-started');
-        }
+        if (response === 0) shell.openExternal('https://www.docker.com/get-started');
         app.quit();
     }
 });
-ipcMain.handle('select-workdir', async () => {
-    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-        properties: ['openDirectory']
-    });
-    if (canceled) return null;
-    return filePaths[0];
-});
 
-// Закрываем приложение при закрытии всех окон (кроме macOS)
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
