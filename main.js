@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const Docker = require('dockerode');
 const ProgressBar = require('electron-progressbar');
+const { PassThrough } = require('stream');
 
 // Выбор пути к Docker-сокету: на Windows — named pipe, иначе — Unix socket
 const dockerSocket = process.platform === 'win32'
@@ -24,8 +25,14 @@ async function checkDocker() {
         mainWindow.webContents.send('container-log', 'Docker-демон доступен');
     } catch (err) {
         console.error('Не удалось подключиться к Docker-демону', err);
-        dialog.showErrorBox('Ошибка Docker', `Не удалось подключиться к Docker-демону:\n${err.message}`);
-        mainWindow.webContents.send('container-log', `❌ Не удалось подключиться к Docker-демону: ${err.message}`);
+        dialog.showErrorBox(
+            'Ошибка Docker',
+            `Не удалось подключиться к Docker-демону:\n${err.message}`
+        );
+        mainWindow.webContents.send(
+            'container-log',
+            `❌ Не удалось подключиться к Docker-демону: ${err.message}`
+        );
     }
 }
 
@@ -59,13 +66,16 @@ function createWindow() {
 }
 
 /**
- * Скачивает образ Docker с прогресс-баром и пишет ход в лог
- * Образ будет загружен только один раз при отсутствии локально
+ * Скачивает образ Docker с прогресс-баром и пишет ход в лог.
+ * Образ будет загружен только один раз при отсутствии локально.
  * @param {string} image — имя Docker-образа
  */
 async function pullImage(image) {
     const wc = mainWindow.webContents;
-    wc.send('container-log', `Образ "${image}" не найден локально. Сейчас он будет загружен один раз…`);
+    wc.send(
+        'container-log',
+        `Образ "${image}" не найден локально. Сейчас он будет загружен один раз…`
+    );
 
     try {
         const bar = new ProgressBar({
@@ -81,17 +91,24 @@ async function pullImage(image) {
                 err => {
                     if (err) {
                         console.error('Ошибка загрузки образа', err);
-                        wc.send('container-log', `❌ Ошибка при загрузке образа: ${err.message}`);
+                        wc.send(
+                            'container-log',
+                            `❌ Ошибка при загрузке образа: ${err.message}`
+                        );
                         return reject(err);
                     }
                     bar.setCompleted();
-                    wc.send('container-log', `Образ "${image}" успешно загружен.`);
+                    wc.send(
+                        'container-log',
+                        `Образ "${image}" успешно загружен.`
+                    );
                     resolve();
                 },
                 evt => {
                     bar.detail = evt.status;
                     if (evt.progressDetail && evt.progressDetail.total) {
-                        bar.value = (evt.progressDetail.current / evt.progressDetail.total) * 100;
+                        bar.value =
+                            (evt.progressDetail.current / evt.progressDetail.total) * 100;
                     }
                 }
             );
@@ -118,22 +135,22 @@ async function runContainer(cfg) {
             wc.send('container-log', `Образ "${image}" не найден локально, начинаем загрузку…`);
             await pullImage(image);
         } else {
-            wc.send('container-log', `Образ "${image}" найдён локально, пропускаем загрузку.`);
+            wc.send('container-log', `Образ "${image}" найден локально, пропускаем загрузку.`);
         }
 
-        // Формируем аргументы для запуска entrypoint.py
+        // Формируем аргументы для entrypoint.py
         const args = [
             '--api_key', cfg.api_key,
             '--ext', cfg.ext,
             '--tone_sample_len', String(cfg.tone_sample_len),
             '--batch_size', String(cfg.batch_size),
         ];
-        if (cfg.n_jobs)    args.push('--n_jobs', String(cfg.n_jobs));
+        if (cfg.n_jobs) args.push('--n_jobs', String(cfg.n_jobs));
         if (cfg.providers && cfg.providers.length) args.push('--providers', ...cfg.providers);
 
         wc.send('container-log', `Аргументы контейнера: ${args.join(' ')}`);
 
-        // Создаём и запускаем контейнер
+        // Создаём контейнер
         const container = await docker.createContainer({
             Image: image,
             Cmd: args,
@@ -141,8 +158,16 @@ async function runContainer(cfg) {
         });
         wc.send('container-log', `Создан контейнер с ID: ${container.id}`);
 
-        const logStream = await container.attach({ stream: true, stdout: true, stderr: true });
-        logStream.on('data', chunk => {
+        // Прикрепляемся к потокам и демультиплексируем
+        const rawStream = await container.attach({ stream: true, stdout: true, stderr: true });
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        docker.modem.demuxStream(rawStream, stdout, stderr);
+
+        stdout.on('data', chunk => {
+            wc.send('container-log', chunk.toString());
+        });
+        stderr.on('data', chunk => {
             wc.send('container-log', chunk.toString());
         });
 
@@ -166,13 +191,13 @@ app.whenReady().then(() => {
         runContainer(cfg);
     });
 
-    // Обработчик сворачивания окна
+    // Сворачивание окна
     ipcMain.on('minimize-window', () => {
         const w = BrowserWindow.getFocusedWindow();
         if (w) w.minimize();
     });
 
-    // Обработчик закрытия окна
+    // Закрытие окна
     ipcMain.on('close-window', () => {
         const w = BrowserWindow.getFocusedWindow();
         if (w) w.close();
