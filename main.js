@@ -108,13 +108,23 @@ async function runContainer(cfg) {
         if (cfg.n_jobs)    args.push('--n_jobs', String(cfg.n_jobs));
         if (cfg.providers && cfg.providers.length) args.push('--providers', ...cfg.providers);
 
+        const hostConfig = { AutoRemove: true };
+        if (cfg.workdir) {
+            hostConfig.Binds = [
+                `${cfg.workdir}:/workspace/SynthVoiceRu/workspace`
+            ];
+        }
+        if (cfg.csv_delimiter) {
+            args.push('--csv_delimiter', cfg.csv_delimiter);
+        }
+
         wc.send('container-log', `Аргументы для контейнера: ${args.join(' ')}`);
 
         // Создаём контейнер
         const container = await docker.createContainer({
             Image: image,
             Cmd: args,
-            HostConfig: { AutoRemove: true },
+            HostConfig: hostConfig,
         });
         wc.send('container-log', `Создан контейнер с ID: ${container.id}`);
 
@@ -178,6 +188,13 @@ app.whenReady().then(async () => {
         }
         app.quit();
     }
+});
+ipcMain.handle('select-workdir', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory']
+    });
+    if (canceled) return null;
+    return filePaths[0];
 });
 
 // Закрываем приложение при закрытии всех окон (кроме macOS)

@@ -109,6 +109,16 @@ window.addEventListener('DOMContentLoaded', () => {
         endRun();
     });
 
+    const chooseDirBtn = document.getElementById('chooseDirBtn');
+    const workdirInput = document.getElementById('workdir');
+
+    chooseDirBtn.addEventListener('click', async () => {
+        const dir = await window.api.selectWorkdir();
+        if (dir) {
+            workdirInput.value = dir;
+        }
+    });
+
     // Отправка формы
     form.addEventListener('submit', e => {
         e.preventDefault();
@@ -128,7 +138,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 ? Number(document.getElementById('n_jobs').value)
                 : null,
             providers:     document.getElementById('providers').value
-                .trim().split(/\s+/)
+                .trim().split(/\s+/),
+            workdir: workdirInput.value || null,
+            csv_delimiter:   document.getElementById('csv_delimiter').value || ','
         };
         window.api.runContainer(cfg);
     });

@@ -183,8 +183,40 @@
                             </div>
                         </div>
                     </div>
+                    <!-- CSV-разделитель -->
+                    <div class="col-md-4 d-flex align-items-start">
+                        <div class="flex-grow-1">
+                            <label for="csv_delimiter" class="form-label x-small">
+                                <i class="bi bi-slash me-1"></i>CSV-разделитель
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <input type="text"
+                                       id="csv_delimiter"
+                                       class="form-control form-control-sm"
+                                       value=","
+                                       maxlength="1">
+                                <span class="input-group-text info-trigger"
+                                      data-info="Символ, который будет разделять колонки в CSV (по умолчанию «,»).">
+        <i class="bi bi-info-circle-fill"></i>
+      </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+        <div class="col-md-12 d-flex align-items-center">
+            <label for="workdir" class="form-label small me-2">
+                <i class="bi bi-folder2-open me-1"></i>Рабочая папка
+            </label>
+            <input type="text"
+                   id="workdir"
+                   class="form-control form-control-sm me-2"
+                   placeholder="Не выбрано"
+                   readonly>
+            <button id="chooseDirBtn" type="button" class="btn btn-outline-secondary btn-sm no-drag">
+                Выбрать...
+            </button>
         </div>
         <!-- Controls -->
         <div class="col-12 d-flex justify-content-end align-items-center">
