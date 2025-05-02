@@ -19,6 +19,17 @@ window.addEventListener('DOMContentLoaded', () => {
     const minimizeBtn    = document.getElementById('minimizeBtn');
     const chooseDirBtn   = document.getElementById('chooseDirBtn');
     const workdirInput   = document.getElementById('workdir');
+    const logsCollapse = document.getElementById('logsCollapse');
+    const logsToggleIcon = document.getElementById('logsToggleIcon');
+
+    logsCollapse.addEventListener('show.bs.collapse', () => {
+        logsToggleIcon.classList.replace('bi-chevron-down', 'bi-chevron-up');
+    });
+    logsCollapse.addEventListener('hide.bs.collapse', () => {
+        logsToggleIcon.classList.replace('bi-chevron-up', 'bi-chevron-down');
+    });
+// сразу свернём
+    logsCollapse.classList.remove('show');
 
     // Тема
     themeToggle.onclick = () => {
