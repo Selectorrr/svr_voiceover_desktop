@@ -143,24 +143,34 @@
         </div>
 
         <!-- Рабочая папка -->
-        <div class="col-12">
+        <div class="col-12 needs-validation">
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-secondary border-0 text-light p-1 no-drag">
-                    <i class="bi bi-folder2-open"></i>
-                </span>
+    <span class="input-group-text bg-secondary border-0 text-light p-1 no-drag">
+      <i class="bi bi-folder2-open"></i>
+    </span>
                 <input type="text"
                        id="workdir"
-                       class="form-control bg-secondary text-light border-0"
-                       placeholder="Рабочая папка не выбрана"
-                       readonly>
+                       class="form-control form-control-sm bg-secondary text-light border-0"
+                       placeholder="Выберите рабочую папку"
+                       readonly
+                       required>
                 <button id="chooseDirBtn" type="button" class="btn btn-outline-secondary btn-sm no-drag">
                     Выбрать…
                 </button>
+                <button id="populateSampleBtn"
+                        type="button"
+                        class="btn btn-secondary btn-sm ms-2 no-drag d-none">
+                    Заполнить примером
+                </button>
+                <div class="invalid-feedback">
+                    Необходимо указать рабочую папку.
+                </div>
             </div>
             <div class="form-text text-muted small">
                 Ваш каталог с файлами для обработки.
             </div>
         </div>
+
 
         <!-- Дополнительные настройки -->
         <div class="col-12">

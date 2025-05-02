@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('api', {
     closeWindow: ()         => ipcRenderer.send('close-window'),
     selectWorkdir: () => ipcRenderer.invoke('select-workdir'),
     stopContainer: () => ipcRenderer.send('stop-container'),
-
+    populateSample: (dir)  => ipcRenderer.invoke('populate-sample', dir),
 });
 
 window.addEventListener('DOMContentLoaded', () => {

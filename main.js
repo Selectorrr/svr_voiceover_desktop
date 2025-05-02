@@ -4,6 +4,7 @@ const path = require('path');
 const Docker = require('dockerode');
 const ProgressBar = require('electron-progressbar');
 const { PassThrough } = require('stream');
+const fs = require('fs/promises');
 
 const dockerSocket = process.platform === 'win32'
     ? '//./pipe/docker_engine'
@@ -17,7 +18,7 @@ let currentContainerId = null; // хранит ID активного конте�
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 575,
-        height: 500,
+        height: 525,
         frame: false,
         autoHideMenuBar: true,
         resizable: false,
@@ -186,4 +187,51 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
+});
+
+
+async function copyRecursive(srcDir, destDir) {
+    await fs.mkdir(destDir, { recursive: true });
+    const entries = await fs.readdir(srcDir, { withFileTypes: true });
+    for (const entry of entries) {
+        const srcPath  = path.join(srcDir, entry.name);
+        const destPath = path.join(destDir, entry.name);
+        if (entry.isDirectory()) {
+            // рекурсивно копируем вложенную папку
+            await copyRecursive(srcPath, destPath);
+        } else if (entry.isFile()) {
+            // проверяем перезапись
+            let exists = false;
+            try {
+                await fs.access(destPath);
+                exists = true;
+            } catch {}
+            if (exists) {
+                const { response } = await dialog.showMessageBox({
+                    type: 'question',
+                    buttons: ['Перезаписать','Пропустить','Отмена'],
+                    defaultId: 0, cancelId: 2,
+                    title: 'Перезапись файла',
+                    message: `Файл "${entry.name}" уже есть.`,
+                    detail: 'Что сделать?'
+                });
+                if (response === 2) throw new Error('Операция отменена');
+                if (response === 1) continue; // пропустить
+            }
+            await fs.copyFile(srcPath, destPath);
+        }
+    }
+}
+
+ipcMain.handle('populate-sample', async (_e, targetDir) => {
+    try {
+        const samplesDir = path.join(__dirname, 'samples');
+        await copyRecursive(samplesDir, targetDir);
+        return { success: true };
+    } catch (err) {
+        const msg = err.message === 'Операция отменена'
+            ? 'Копирование отменено'
+            : err.message;
+        return { success: false, message: msg };
+    }
 });

@@ -21,6 +21,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const workdirInput   = document.getElementById('workdir');
     const logsCollapse = document.getElementById('logsCollapse');
     const logsToggleIcon = document.getElementById('logsToggleIcon');
+    const populateSampleBtn  = document.getElementById('populateSampleBtn');
+
 
 
     logsCollapse.addEventListener('show.bs.collapse', () => {
@@ -44,8 +46,20 @@ window.addEventListener('DOMContentLoaded', () => {
     // Выбор папки
     chooseDirBtn.onclick = async () => {
         const dir = await window.api.selectWorkdir();
-        if (dir) workdirInput.value = dir;
+        if (dir) {
+            workdirInput.value = dir;
+            workdirInput.classList.remove('is-invalid');
+            populateSampleBtn.classList.remove('d-none');
+        }
     };
+
+    // Если пользователь кликает «Заполнить примером» — кладём туда демонстрационные файлы
+    populateSampleBtn.addEventListener('click', () => {
+        window.api.populateSample(dir => {
+            workdirInput.value = dir;
+            showToast('Папка заполнена примером', 'success');
+        });
+    });
 
     // Подсказки
     document.querySelectorAll('.info-trigger').forEach(el => {
@@ -149,6 +163,12 @@ window.addEventListener('DOMContentLoaded', () => {
     // Submit
     form.onsubmit = e => {
         e.preventDefault();
+        if (!workdirInput.value) {
+            workdirInput.classList.add('is-invalid');
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         if (!form.checkValidity()) return form.classList.add('was-validated');
         form.classList.remove('was-validated');
         logsEl.textContent='';
@@ -165,4 +185,14 @@ window.addEventListener('DOMContentLoaded', () => {
         };
         window.api.runContainer(cfg);
     };
+
+    populateSampleBtn.addEventListener('click', async () => {
+        const dir = workdirInput.value;
+        const result = await window.api.populateSample(dir);
+        if (result.success) {
+            showToast('Папка заполнена примером данных', 'success');
+        } else {
+            showToast(`Ошибка примера: ${result.message}`, 'danger');
+        }
+    });
 });
