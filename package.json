@@ -1,5 +1,5 @@
 {
-  "name": "svr_voiceover_gui",
+  "name": "svr_voiceover_desktop",
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "author": "SynthVoiceRu",
   "license": "ISC",
-  "description": "GUI for SVR_VOICEOVER",
+  "description": "Desktop version for SVR_VOICEOVER",
   "devDependencies": {
     "@electron-forge/cli": "^7.8.0",
     "@electron-forge/maker-deb": "^7.8.0",
