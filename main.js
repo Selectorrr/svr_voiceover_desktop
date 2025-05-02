@@ -16,6 +16,16 @@ let mainWindow;
 let currentContainerId = null; // хранит ID активного контейнера
 
 function createWindow() {
+    let iconName;
+    if (process.platform === 'darwin') {
+        iconName = 'icon.icns';
+    } else if (process.platform === 'win32') {
+        iconName = 'icon.ico';
+    } else {
+        iconName = 'icon_256.png';
+    }
+    let iconPath = path.join(__dirname, 'assets', iconName);
+
     mainWindow = new BrowserWindow({
         width: 575,
         height: 525,
@@ -23,6 +33,7 @@ function createWindow() {
         autoHideMenuBar: true,
         resizable: false,
         maximizable: false,
+        icon: iconPath,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
