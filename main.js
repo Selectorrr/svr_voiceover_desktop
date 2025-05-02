@@ -22,7 +22,7 @@ function createWindow() {
     } else if (process.platform === 'win32') {
         iconName = 'icon.ico';
     } else {
-        iconName = 'icon_256.png';
+        iconName = 'icon.png';
     }
     let iconPath = path.join(__dirname, 'assets', iconName);
 
