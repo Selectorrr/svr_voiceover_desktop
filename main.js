@@ -17,7 +17,7 @@ let currentContainerId = null; // хранит ID активного конте�
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 575,
-        height: 450,
+        height: 500,
         frame: false,
         autoHideMenuBar: true,
         resizable: false,
@@ -90,6 +90,7 @@ async function runContainer(cfg) {
         if (cfg.n_jobs)        args.push('--n_jobs', String(cfg.n_jobs));
         if (cfg.providers)     args.push('--providers', ...cfg.providers);
         if (cfg.csv_delimiter) args.push('--csv_delimiter', cfg.csv_delimiter);
+        if (cfg.is_strict_len) args.push('--is_strict_len', String(cfg.is_strict_len));
 
         const hostConfig = { AutoRemove: true };
         if (cfg.workdir) {

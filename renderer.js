@@ -22,6 +22,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const logsCollapse = document.getElementById('logsCollapse');
     const logsToggleIcon = document.getElementById('logsToggleIcon');
 
+
     logsCollapse.addEventListener('show.bs.collapse', () => {
         logsToggleIcon.classList.replace('bi-chevron-down', 'bi-chevron-up');
     });
@@ -154,6 +155,7 @@ window.addEventListener('DOMContentLoaded', () => {
         startRun();
         const cfg = {
             api_key:       document.getElementById('api_key').value,
+            is_strict_len: document.getElementById('is_strict_len').checked,
             ext:           document.getElementById('ext').value,
             batch_size:    Number(document.getElementById('batch_size').value),
             n_jobs:        Number(document.getElementById('n_jobs').value),
