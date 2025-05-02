@@ -27,6 +27,7 @@ function createWindow() {
     let iconPath = path.join(__dirname, 'assets', iconName);
 
     mainWindow = new BrowserWindow({
+        title: 'SVR Voiceover Desktop',
         width: 575,
         height: 525,
         frame: false,
@@ -191,7 +192,9 @@ app.whenReady().then(async () => {
             buttons: ['Скачать Docker', 'Закрыть'],
             defaultId: 0, cancelId: 1,
         });
-        if (response === 0) shell.openExternal('https://www.docker.com/get-started');
+        if (response === 0) {
+            await shell.openExternal('https://www.docker.com/get-started');
+        }
         app.quit();
     }
 });

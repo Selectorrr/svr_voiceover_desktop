@@ -36,6 +36,7 @@
     "url": "https://boosty.to/synthvoiceru"
   },
   "build": {
+    "productName": "SVR Voiceover Desktop",
     "appId": "ru.synthvoice.voiceover",
     "files": ["**/*"],
     "directories": { "buildResources": "assets" },
