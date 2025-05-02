@@ -50,7 +50,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Подсказки
     document.querySelectorAll('.info-trigger').forEach(el => {
         el.onclick = () => {
-            infoModalBody.innerText = el.dataset.info;
+            infoModalBody.innerHTML = el.dataset.info;
             infoModal.show();
         };
     });

@@ -99,9 +99,10 @@
             <div class="input-group input-group-sm">
                 <input type="text" id="api_key" class="form-control form-control-sm" required
                        placeholder="Ключ доступа">
-                <span class="input-group-text info-trigger" data-info="Ваш уникальный API-ключ из личного кабинета.">
-            <i class="bi bi-info-circle-fill"></i>
-          </span>
+                <span class="input-group-text info-trigger"
+                      data-info="Ваш уникальный API-ключ можно получить у Telegram-бота <a href='https://t.me/SynthVoiceRuBot' target='_blank'>@SynthVoiceRuBot</a>.">
+                    <i class="bi bi-info-circle-fill"></i>
+                </span>
                 <div class="invalid-feedback">Укажите API-ключ</div>
             </div>
         </div>
@@ -115,7 +116,7 @@
                 </label>
             </div>
             <i class="bi bi-info-circle-fill ms-2 no-drag info-trigger"
-               data-info="Если включено, итоговая длительность аудиофайла будет строго совпадать с длиной исходного текста."
+               data-info="Если включено, результат никогда не будет длиннее оригинала: речь ускорится, чтобы уложиться в тот же временной интервал."
                style="cursor:pointer;"></i>
         </div>
 
@@ -127,13 +128,16 @@
             <div class="input-group input-group-sm">
                 <select id="ext" class="form-select form-select-sm" required>
                     <option value="ogg">ogg</option>
-                    <option value="wav" selected>wav</option>
+                    <option value="wav">wav</option>
                     <option value="flac">flac</option>
                 </select>
                 <span class="input-group-text info-trigger"
-                      data-info="Выберите формат выходного файла (по звуковой библиотеке SoundFile).">
-            <i class="bi bi-info-circle-fill"></i>
-          </span>
+                      data-info="
+          <strong>ogg</strong> – экономит место, но может чуть снизить качество;<br/>
+          <strong>wav</strong> – сохраняет максимальное качество, но файлы получаются большими;<br/>
+          <strong>flac</strong> – обеспечивает хорошее сжатие без потери качества,
+          но не все программы поддерживают этот формат при дальнейшей обработке.
+        "> <i class="bi bi-info-circle-fill"></i> </span>
                 <div class="invalid-feedback">Укажите формат</div>
             </div>
         </div>
@@ -193,22 +197,7 @@
                                     <option value="CPUExecutionProvider">CPU</option>
                                 </select>
                                 <span class="input-group-text info-trigger"
-                                      data-info="Выберите устройство: GPU или CPU.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </div>
-                        </div>
-                        <!-- Размер группы -->
-                        <div class="col-md-3">
-                            <label for="batch_size" class="form-label x-small">
-                                <i class="bi bi-stack me-1"></i>Размер партии
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <input type="number" id="batch_size"
-                                       class="form-control form-control-sm"
-                                       value="1" min="1" max="50">
-                                <span class="input-group-text info-trigger"
-                                      data-info="Сколько фраз обрабатывать за раз.">
+                                      data-info="Выберите тип устройства: GPU или CPU. Если у вас несколько видеокарт то будут использоваться все.">
                                     <i class="bi bi-info-circle-fill"></i>
                                 </span>
                             </div>
@@ -223,7 +212,22 @@
                                        class="form-control form-control-sm"
                                        value="1" min="1">
                                 <span class="input-group-text info-trigger"
-                                      data-info="Число параллельных задач (по умолчанию один).">
+                                      data-info="Один поток обычно занимает до ~12 ГБ видеопамяти. Если у вашей видеокарты ≥24 ГБ, можете увеличить число потоков для более эффективного использования ресурсов GPU. При этом не забудьте пропорционально увеличить размер партии.">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <!-- Размер группы -->
+                        <div class="col-md-3">
+                            <label for="batch_size" class="form-label x-small">
+                                <i class="bi bi-stack me-1"></i>Размер партии
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" id="batch_size"
+                                       class="form-control form-control-sm"
+                                       value="2" min="1" max="50">
+                                <span class="input-group-text info-trigger"
+                                      data-info="Для синтеза речи используется API токенизатора с лимитом на 30 запросов в минуту. Чтобы не превысить это ограничение, вы можете увеличить количество записей в одном запросе, тем самым снизив общее число запросов.">
                                     <i class="bi bi-info-circle-fill"></i>
                                 </span>
                             </div>
@@ -288,13 +292,14 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Подсказка</h5>
+                <h6 class="modal-title">Подсказка</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="infoModalBody"></div>
         </div>
     </div>
 </div>
+
 
 <!-- Toast контейнер -->
 <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1100;"></div>
