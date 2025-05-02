@@ -1,5 +1,7 @@
 # SVR Voiceover Desktop
 
+<img width="569" alt="Снимок экрана 2025-05-02 в 18 41 03" src="https://github.com/user-attachments/assets/67732ffa-a05c-48cd-b0ef-50685dadeab8" />
+
 Лёгкое кроссплатформенное GUI-приложение для запуска Docker-контейнера `selector/voiceover`. Помогает быстро сгенерировать озвучку по CSV без командной строки.
 
 ---
