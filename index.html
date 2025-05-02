@@ -148,20 +148,39 @@
     <span class="input-group-text bg-secondary border-0 text-light p-1 no-drag">
       <i class="bi bi-folder2-open"></i>
     </span>
-                <input type="text"
-                       id="workdir"
-                       class="form-control form-control-sm bg-secondary text-light border-0"
-                       placeholder="Выберите рабочую папку"
-                       readonly
-                       required>
-                <button id="chooseDirBtn" type="button" class="btn btn-outline-secondary btn-sm no-drag">
-                    Выбрать…
-                </button>
-                <button id="populateSampleBtn"
+                <input
+                        type="text"
+                        id="workdir"
+                        class="form-control form-control-sm bg-secondary text-light border-0"
+                        placeholder="Выберите рабочую папку"
+                        readonly
+                        required
+                >
+                <button
+                        id="chooseDirBtn"
                         type="button"
-                        class="btn btn-secondary btn-sm ms-2 no-drag d-none">
-                    Заполнить примером
+                        class="btn btn-outline-secondary btn-sm no-drag"
+                >Выбрать…
                 </button>
+                <button
+                        id="openDirBtn"
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm no-drag ms-1"
+                        disabled
+                ><i class="bi bi-folder2-open"></i></button>
+
+                <!-- Иконка заполнить примером -->
+                <button
+                        id="populateSampleBtn"
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm no-drag ms-1 d-none p-1"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="Заполнить папку примером данных"
+                >
+                    <i class="bi bi-file-earmark-arrow-down-fill"></i>
+                </button>
+
                 <div class="invalid-feedback">
                     Необходимо указать рабочую папку.
                 </div>

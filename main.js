@@ -235,3 +235,14 @@ ipcMain.handle('populate-sample', async (_e, targetDir) => {
         return { success: false, message: msg };
     }
 });
+
+ipcMain.handle('open-workdir', async (_e, targetDir) => {
+    if (!targetDir) return { success: false, message: 'Папка не выбрана' };
+    try {
+        await shell.openPath(targetDir);
+        return { success: true };
+    } catch (err) {
+        console.error('open-workdir error', err);
+        return { success: false, message: err.message };
+    }
+});

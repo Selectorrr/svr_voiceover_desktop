@@ -22,6 +22,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const logsCollapse = document.getElementById('logsCollapse');
     const logsToggleIcon = document.getElementById('logsToggleIcon');
     const populateSampleBtn  = document.getElementById('populateSampleBtn');
+    const openDirBtn        = document.getElementById('openDirBtn');
 
 
 
@@ -48,10 +49,20 @@ window.addEventListener('DOMContentLoaded', () => {
         const dir = await window.api.selectWorkdir();
         if (dir) {
             workdirInput.value = dir;
+            openDirBtn.disabled = false;
             workdirInput.classList.remove('is-invalid');
             populateSampleBtn.classList.remove('d-none');
         }
     };
+
+    // по клику открываем папку
+    openDirBtn.addEventListener('click', async () => {
+        const dir = workdirInput.value;
+        const result = await window.api.openWorkdir(dir);
+        if (!result.success) {
+            showToast(`Ошибка открытия: ${result.message}`, 'danger');
+        }
+    });
 
     // Если пользователь кликает «Заполнить примером» — кладём туда демонстрационные файлы
     populateSampleBtn.addEventListener('click', () => {
