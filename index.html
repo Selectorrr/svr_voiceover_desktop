@@ -192,79 +192,90 @@
 
 
         <!-- Дополнительные настройки -->
-        <div class="col-12">
-            <a class="btn btn-link p-0 small collapsed" data-bs-toggle="collapse" href="#advancedOptions"
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <!-- Кнопка «Доп. настройки» -->
+            <a class="btn btn-link p-0 small collapsed"
+               data-bs-toggle="collapse" href="#advancedOptions"
                role="button" aria-expanded="false">
                 <i class="bi bi-sliders rotate-icon me-1"></i>Доп. настройки
             </a>
-            <div class="collapse mt-2 animate__animated animate__fadeIn" id="advancedOptions">
-                <div class="card p-3">
-                    <div class="row g-3">
-                        <!-- CSV-разделитель -->
-                        <div class="col-md-3">
-                            <label for="csv_delimiter" class="form-label x-small">
-                                <i class="bi bi-slash me-1"></i>CSV-разделитель
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" id="csv_delimiter"
-                                       class="form-control form-control-sm"
-                                       value="," maxlength="1">
-                                <span class="input-group-text info-trigger"
-                                      data-info="Символ-разделитель колонок в CSV (по умолчанию «,»).">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </div>
+            <div class="d-flex align-items-center">
+                Баланс: <span id="charCount"> – </span>
+                <i class="bi bi-info-circle-fill ms-1 info-trigger"
+                   data-info="Баланс можно пополнить через Telegram-бота <a href='https://t.me/SynthVoiceRuBot' target='_blank'>@SynthVoiceRuBot</a>."></i>
+            </div>
+
+        </div>
+
+        <!-- Тело «Доп. настройки» остаётся без изменений -->
+        <div class="collapse mt-2 animate__animated animate__fadeIn" id="advancedOptions">
+            <div class="card p-3">
+                <div class="row g-3">
+                    <!-- CSV-разделитель -->
+                    <div class="col-md-3">
+                        <label for="csv_delimiter" class="form-label x-small">
+                            <i class="bi bi-slash me-1"></i>CSV-разделитель
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="csv_delimiter"
+                                   class="form-control form-control-sm"
+                                   value="," maxlength="1">
+                            <span class="input-group-text info-trigger"
+                                  data-info="Символ-разделитель колонок в CSV (по умолчанию «,»).">
+                                <i class="bi bi-info-circle-fill"></i>
+                            </span>
                         </div>
-                        <!-- Устройство -->
-                        <div class="col-md-3">
-                            <label for="device" class="form-label x-small">
-                                <i class="bi bi-hdd-network-fill me-1"></i>Устройство
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <select id="device" class="form-select form-select-sm">
-                                    <option value="CUDAExecutionProvider" selected>GPU (CUDA)</option>
-                                    <option value="CPUExecutionProvider">CPU</option>
-                                </select>
-                                <span class="input-group-text info-trigger"
-                                      data-info="Выберите тип устройства: GPU или CPU. Если у вас несколько видеокарт то будут использоваться все.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </div>
+                    </div>
+                    <!-- Устройство -->
+                    <div class="col-md-3">
+                        <label for="device" class="form-label x-small">
+                            <i class="bi bi-hdd-network-fill me-1"></i>Устройство
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <select id="device" class="form-select form-select-sm">
+                                <option value="CUDAExecutionProvider" selected>GPU (CUDA)</option>
+                                <option value="CPUExecutionProvider">CPU</option>
+                            </select>
+                            <span class="input-group-text info-trigger"
+                                  data-info="Выберите тип устройства: GPU или CPU. Если у вас несколько видеокарт, будут использоваться все.">
+                                <i class="bi bi-info-circle-fill"></i>
+                            </span>
                         </div>
-                        <!-- Потоки -->
-                        <div class="col-md-3">
-                            <label for="n_jobs" class="form-label x-small">
-                                <i class="bi bi-gear-fill me-1"></i>Потоки
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <input type="number" id="n_jobs"
-                                       class="form-control form-control-sm"
-                                       value="1" min="1">
-                                <span class="input-group-text info-trigger"
-                                      data-info="Один поток обычно занимает до ~12 ГБ видеопамяти. Если у вашей видеокарты ≥24 ГБ, можете увеличить число потоков для более эффективного использования ресурсов GPU. При этом не забудьте пропорционально увеличить размер партии.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </div>
+                    </div>
+                    <!-- Потоки -->
+                    <div class="col-md-3">
+                        <label for="n_jobs" class="form-label x-small">
+                            <i class="bi bi-gear-fill me-1"></i>Потоки
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" id="n_jobs"
+                                   class="form-control form-control-sm"
+                                   value="1" min="1">
+                            <span class="input-group-text info-trigger"
+                                  data-info="Один поток обычно занимает до ~12 ГБ видеопамяти. Если у вашей видеокарты ≥24 ГБ, можно увеличить число потоков для более эффективного использования GPU. При этом пропорционально увеличьте размер партии.">
+                                <i class="bi bi-info-circle-fill"></i>
+                        </span>
                         </div>
-                        <!-- Размер группы -->
-                        <div class="col-md-3">
-                            <label for="batch_size" class="form-label x-small">
-                                <i class="bi bi-stack me-1"></i>Размер партии
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <input type="number" id="batch_size"
-                                       class="form-control form-control-sm"
-                                       value="2" min="1" max="50">
-                                <span class="input-group-text info-trigger"
-                                      data-info="Для синтеза речи используется API токенизатора с лимитом на 30 запросов в минуту. Чтобы не превысить это ограничение, вы можете увеличить количество записей в одном запросе, тем самым снизив общее число запросов.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </div>
+                    </div>
+                    <!-- Размер партии -->
+                    <div class="col-md-3">
+                        <label for="batch_size" class="form-label x-small">
+                            <i class="bi bi-stack me-1"></i>Размер партии
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" id="batch_size"
+                                   class="form-control form-control-sm"
+                                   value="2" min="1" max="50">
+                            <span class="input-group-text info-trigger"
+                                  data-info="API токенизатора ограничен 30 запросами/мин. Увеличивайте размер партии, чтобы снизить число запросов.">
+                                <i class="bi bi-info-circle-fill"></i>
+                        </span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
 
         <!-- Контейнер управления + inline-прогресс -->
         <div class="col-12 d-flex justify-content-end align-items-center">

@@ -23,6 +23,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const logsToggleIcon = document.getElementById('logsToggleIcon');
     const populateSampleBtn  = document.getElementById('populateSampleBtn');
     const openDirBtn        = document.getElementById('openDirBtn');
+    const charCountEl = document.getElementById('charCount');
 
 
 
@@ -163,6 +164,11 @@ window.addEventListener('DOMContentLoaded', () => {
                 progressInline.classList.remove('d-none');
                 progressLabel.classList.remove('d-none');
             }
+        }
+        const m = line.match(/Доступно\s+(\d+)\s+символ/);
+        if (m) {
+            const available = Number(m[1]);
+            charCountEl.innerText = available.toLocaleString('ru-RU');
         }
     });
     window.api.onDone(() => {
