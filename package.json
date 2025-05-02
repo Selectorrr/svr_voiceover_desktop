@@ -6,9 +6,10 @@
     "start": "electron-forge start",
     "test": "echo \"Error: no test specified\" && exit 1",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac"
   },
-  "author": "SynthVoiceRu",
   "license": "ISC",
   "description": "Desktop version for SVR_VOICEOVER",
   "devDependencies": {
@@ -20,11 +21,27 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.8.0",
     "@electron-forge/plugin-fuses": "^7.8.0",
     "@electron/fuses": "^1.8.0",
-    "electron": "^36.0.1"
+    "electron": "^36.0.1",
+    "electron-builder": "^26.0.12"
   },
   "dependencies": {
     "dockerode": "^4.0.6",
     "electron-progressbar": "^2.2.1",
     "electron-squirrel-startup": "^1.0.1"
+  },
+  "homepage": "https://boosty.to/synthvoiceru",
+  "author": {
+    "name": "Selector",
+    "email": "selectorrr@yandex.ru",
+    "url": "https://boosty.to/synthvoiceru"
+  },
+  "build": {
+    "appId": "ru.synthvoice.voiceover",
+    "files": ["**/*"],
+    "directories": { "buildResources": "assets" },
+    "npmRebuild": false,
+    "win": { "icon": "assets/icon.ico" },
+    "mac": { "icon": "assets/icon.icns" },
+    "linux": { "icon": "assets/icon.png", "target": ["deb","AppImage"] , "category": "AudioVideo"}
   }
 }
