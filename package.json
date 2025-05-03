@@ -43,6 +43,6 @@
     "npmRebuild": false,
     "win": { "icon": "assets/icon.ico" },
     "mac": { "icon": "assets/icon.icns" },
-    "linux": { "icon": "assets/icon.png", "target": ["deb","AppImage"] , "category": "AudioVideo"}
+    "linux": { "icon": "assets/icon.png", "target": ["deb","AppImage"] , "category": "AudioVideo", "artifactName": "${productName}_${version}_${arch}.${ext}"}
   }
 }
