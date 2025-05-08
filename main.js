@@ -90,7 +90,7 @@ async function runContainer(cfg) {
     const wc = mainWindow.webContents;
     wc.send('container-log', `Получена конфигурация: ${JSON.stringify(cfg)}`);
 
-    const image = 'selector/voiceover:1.0.0';
+    const image = 'selector/voiceover:1.0.1';
     try {
         const imgs = await docker.listImages({ filters: { reference: [image] } });
         if (!imgs.length) await pullImage(image);

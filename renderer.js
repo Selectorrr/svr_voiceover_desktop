@@ -168,7 +168,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const m = line.match(/Доступно\s+(\d+)\s+символ/);
         if (m) {
             const available = Number(m[1]);
-            charCountEl.innerText = available.toLocaleString('ru-RU');
+            charCountEl.innerHTML = '&nbsp;' + available.toLocaleString('ru-RU');
         }
     });
     window.api.onDone(() => {
