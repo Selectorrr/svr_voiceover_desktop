@@ -120,6 +120,35 @@
                style="cursor:pointer;"></i>
         </div>
 
+        <!-- Учитывать качество звука -->
+        <div class="col-md-6 d-flex align-items-center">
+            <div class="form-check form-switch form-switch-sm">
+                <input class="form-check-input" type="checkbox" id="is_respect_mos">
+                <label class="form-check-label small ms-2 d-flex align-items-center" for="is_respect_mos">
+                    <i class="bi bi-activity me-1"></i>Учитывать качество звука
+                </label>
+            </div>
+            <i class="bi bi-info-circle-fill ms-2 no-drag info-trigger"
+               data-info="Если включено, при генерации сэмпла будет учитываться качество аудиофайла, например, отсутствие шумов и пауз. Качество может стать лучше, но это может привести к переключению голоса одного спикера."
+               style="cursor:pointer;"></i>
+        </div>
+
+        <!-- Фильтр по пути -->
+        <div class="col-md-6">
+            <label for="path_filter" class="form-label small">
+                <i class="bi bi-filter-circle-fill me-1"></i>Фильтр реплик по пути файла
+            </label>
+            <div class="input-group input-group-sm">
+                <input type="text" id="path_filter" class="form-control form-control-sm"
+                       placeholder="Например: Audio/cutscene/">
+                <span class="input-group-text info-trigger"
+                      data-info="Если указано, в озвучку пойдут только те строки, у которых путь к аудиофайлу начинается с этого значения.">
+            <i class="bi bi-info-circle-fill"></i>
+        </span>
+            </div>
+        </div>
+
+
         <!-- Формат -->
         <div class="col-md-6">
             <label for="ext" class="form-label small">

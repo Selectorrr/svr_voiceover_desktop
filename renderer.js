@@ -193,6 +193,8 @@ window.addEventListener('DOMContentLoaded', () => {
         const cfg = {
             api_key:       document.getElementById('api_key').value,
             is_strict_len: document.getElementById('is_strict_len').checked,
+            is_respect_mos: document.getElementById('is_respect_mos').checked,
+            path_filter: document.getElementById('path_filter').value,
             ext:           document.getElementById('ext').value,
             batch_size:    Number(document.getElementById('batch_size').value),
             n_jobs:        Number(document.getElementById('n_jobs').value),

@@ -29,7 +29,7 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         title: 'SVR Voiceover Desktop',
         width: 575,
-        height: 525,
+        height: 610,
         frame: false,
         autoHideMenuBar: true,
         resizable: false,
@@ -104,6 +104,8 @@ async function runContainer(cfg) {
         if (cfg.providers)     args.push('--providers', ...cfg.providers);
         if (cfg.csv_delimiter) args.push('--csv_delimiter', cfg.csv_delimiter);
         if (cfg.is_strict_len) args.push('--is_strict_len', String(cfg.is_strict_len));
+        if (cfg.is_respect_mos) args.push('--is_respect_mos', String(cfg.is_respect_mos));
+        if (cfg.path_filter) args.push('--path_filter', String(cfg.path_filter));
 
         const hostConfig = { AutoRemove: true };
         if (cfg.workdir) {
