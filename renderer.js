@@ -151,7 +151,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         if (line.includes('Общий прогресс:')) {
             // пример: "Общий прогресс:   45%|#####     | 360/80683 [00:45<10:20,  1.23s/it]"
-            const m = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)\]/);
+            const m = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
             if (m) {
                 const pct     = Number(m[1]);
                 const elapsed = m[2];      // "00:45"
@@ -191,16 +191,21 @@ window.addEventListener('DOMContentLoaded', () => {
         logsEl.textContent='';
         startRun();
         const cfg = {
-            api_key:       document.getElementById('api_key').value,
-            is_strict_len: document.getElementById('is_strict_len').checked,
-            is_respect_mos: document.getElementById('is_respect_mos').checked,
-            path_filter: document.getElementById('path_filter').value,
-            ext:           document.getElementById('ext').value,
-            batch_size:    Number(document.getElementById('batch_size').value),
-            n_jobs:        Number(document.getElementById('n_jobs').value),
-            csv_delimiter: document.getElementById('csv_delimiter').value,
-            workdir:       workdirInput.value || null,
-            providers:     [ document.getElementById('device').value ]
+            api_key:         document.getElementById('api_key').value,
+            is_strict_len:   document.getElementById('is_strict_len').checked,
+            is_respect_mos:  document.getElementById('is_respect_mos').checked,
+            is_use_voice_len:document.getElementById('is_use_voice_len').checked,
+
+            tone_sample_len: Number(document.getElementById('tone_sample_len').value),
+            min_len_deviation: Number(document.getElementById('min_len_deviation').value),
+
+            path_filter:     document.getElementById('path_filter').value,
+            ext:             document.getElementById('ext').value,
+            batch_size:      Number(document.getElementById('batch_size').value),
+            n_jobs:          Number(document.getElementById('n_jobs').value),
+            csv_delimiter:   document.getElementById('csv_delimiter').value,
+            workdir:         workdirInput.value || null,
+            providers:       [document.getElementById('device').value],
         };
         window.api.runContainer(cfg);
     };

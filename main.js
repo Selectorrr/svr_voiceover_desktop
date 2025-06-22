@@ -90,7 +90,7 @@ async function runContainer(cfg) {
     const wc = mainWindow.webContents;
     wc.send('container-log', `Получена конфигурация: ${JSON.stringify(cfg)}`);
 
-    const image = 'selector/voiceover:1.0.1';
+    const image = 'selector/voiceover:latest';
     try {
         const imgs = await docker.listImages({ filters: { reference: [image] } });
         if (!imgs.length) await pullImage(image);
@@ -100,12 +100,17 @@ async function runContainer(cfg) {
             '--ext', cfg.ext,
             '--batch_size', String(cfg.batch_size),
         ];
-        if (cfg.n_jobs)        args.push('--n_jobs', String(cfg.n_jobs));
-        if (cfg.providers)     args.push('--providers', ...cfg.providers);
-        if (cfg.csv_delimiter) args.push('--csv_delimiter', cfg.csv_delimiter);
-        if (cfg.is_strict_len) args.push('--is_strict_len', String(cfg.is_strict_len));
-        if (cfg.is_respect_mos) args.push('--is_respect_mos', String(cfg.is_respect_mos));
-        if (cfg.path_filter) args.push('--path_filter', String(cfg.path_filter));
+
+        if (cfg.n_jobs)              args.push('--n_jobs', String(cfg.n_jobs));
+        if (cfg.providers)           args.push('--providers', ...cfg.providers);
+        if (cfg.csv_delimiter)       args.push('--csv_delimiter', cfg.csv_delimiter);
+        if (cfg.path_filter)         args.push('--path_filter', cfg.path_filter);
+        // if (cfg.tone_sample_len)     args.push('--tone_sample_len', String(cfg.tone_sample_len));
+        // if (cfg.min_len_deviation)   args.push('--min_len_deviation', String(cfg.min_len_deviation));
+
+        if (cfg.is_strict_len)       args.push('--is_strict_len');
+        if (cfg.is_use_voice_len)    args.push('--is_use_voice_len');
+        if (cfg.is_respect_mos)      args.push('--is_respect_mos');
 
         const hostConfig = { AutoRemove: true };
         if (cfg.workdir) {
