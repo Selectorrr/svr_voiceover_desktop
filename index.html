@@ -107,74 +107,6 @@
             </div>
         </div>
 
-        <!-- Строгая длина -->
-        <div class="col-md-6 d-flex align-items-center">
-            <div class="form-check form-switch form-switch-sm">
-                <input class="form-check-input" type="checkbox" id="is_strict_len">
-                <label class="form-check-label small ms-2 d-flex align-items-center" for="is_strict_len">
-                    <i class="bi bi-arrows-expand me-1"></i>Строгая длина
-                </label>
-            </div>
-            <i class="bi bi-info-circle-fill ms-2 no-drag info-trigger"
-               data-info="Если включено, результат никогда не будет длиннее оригинала: речь ускорится, чтобы уложиться в тот же временной интервал."
-               style="cursor:pointer;"></i>
-        </div>
-
-        <!-- Учитывать качество звука -->
-        <div class="col-md-6 d-flex align-items-center">
-            <div class="form-check form-switch form-switch-sm">
-                <input class="form-check-input" type="checkbox" id="is_respect_mos">
-                <label class="form-check-label small ms-2 d-flex align-items-center" for="is_respect_mos">
-                    <i class="bi bi-activity me-1"></i>Учитывать качество звука
-                </label>
-            </div>
-            <i class="bi bi-info-circle-fill ms-2 no-drag info-trigger"
-               data-info="Если включено, при генерации сэмпла будет учитываться качество аудиофайла, например, отсутствие шумов и пауз. Качество может стать лучше, но это может привести к переключению голоса одного спикера."
-               style="cursor:pointer;"></i>
-        </div>
-
-        <!-- Учитывать только речь -->
-        <div class="col-md-6 d-flex align-items-center">
-            <div class="form-check form-switch form-switch-sm">
-                <input class="form-check-input" type="checkbox" id="is_use_voice_len">
-                <label class="form-check-label small ms-2 d-flex align-items-center" for="is_use_voice_len">
-                    <i class="bi bi-megaphone-fill me-1"></i>Учитывать речь
-                </label>
-            </div>
-            <i class="bi bi-info-circle-fill ms-2 no-drag info-trigger"
-               data-info="Если включено, длина будет определяться по фактической речи (без пауз), а не по полной длительности аудиофайла."
-               style="cursor:pointer;"></i>
-        </div>
-
-        <!-- Длина сэмпла -->
-        <div class="col-md-6">
-            <label for="tone_sample_len" class="form-label small">
-                <i class="bi bi-soundwave me-1"></i>Длина сэмпла
-            </label>
-            <div class="input-group input-group-sm">
-                <input type="number" id="tone_sample_len" class="form-control form-control-sm" value="7500" min="1000">
-                <span class="input-group-text info-trigger"
-                      data-info="Сколько миллисекунд аудио использовать как сэмпл голоса.">
-            <i class="bi bi-info-circle-fill"></i>
-        </span>
-            </div>
-        </div>
-
-        <!-- Порог отклонения длины -->
-        <div class="col-md-6">
-            <label for="min_len_deviation" class="form-label small">
-                <i class="bi bi-arrows-collapse me-1"></i>Мин. отклонение длины
-            </label>
-            <div class="input-group input-group-sm">
-                <input type="number" step="0.01" id="min_len_deviation" class="form-control form-control-sm" value="0.75" min="0">
-                <span class="input-group-text info-trigger"
-                      data-info="Если озвучка получилась слишком короткой, можно повторить попытку. Здесь задаётся минимальный порог (например, 0.75 = 75% длины оригинала).">
-            <i class="bi bi-info-circle-fill"></i>
-        </span>
-            </div>
-        </div>
-
-
         <!-- Фильтр по пути -->
         <div class="col-md-6">
             <label for="path_filter" class="form-label small">
@@ -348,27 +280,59 @@
         </div>
 
 
-        <!-- Контейнер управления + inline-прогресс -->
-        <div class="col-12 d-flex justify-content-end align-items-center">
-            <div class="d-flex align-items-center me-2 flex-grow-1">
-                <div id="progressInline"
-                     class="progress flex-grow-1 d-none"
-                     style="height:0.5rem;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated"
-                         role="progressbar" style="width:0%"></div>
+        <div class="col-12 d-flex flex-column gap-2">
+
+            <!-- Прогресс + стоп -->
+            <div class="d-flex justify-content-end align-items-center">
+                <div class="d-flex align-items-center me-2 flex-grow-1">
+                    <div id="progressInline"
+                         class="progress flex-grow-1 d-none"
+                         style="height:0.5rem;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar" style="width:0%"></div>
+                    </div>
+                    <span id="progressLabel" class="small text-muted ms-2 d-none"></span>
                 </div>
-                <span id="progressLabel" class="small text-muted ms-2 d-none"></span>
+
+                <button id="stopBtn" type="button" class="btn btn-danger btn-sm no-drag" disabled>
+                    <i class="bi bi-stop-fill"></i>
+                    <span id="stopSpinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span>
+                </button>
             </div>
 
-            <button id="stopBtn" type="button" class="btn btn-danger btn-sm me-2 no-drag" disabled>
-                <i class="bi bi-stop-fill"></i>
-                <span id="stopSpinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span>
-            </button>
-            <button id="runBtn" type="submit" class="btn btn-success btn-sm">
-                <i class="bi bi-play-fill"></i>
-                <span id="runSpinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span>
-            </button>
+            <!-- Кнопки стадий по вертикали -->
+            <div class="d-flex flex-column gap-2">
+
+                <!-- 1. Озвучка — зелёная -->
+                <button id="runBtn" type="submit"
+                        class="btn btn-success btn-sm no-drag w-100 d-flex justify-content-center align-items-center">
+                    1. Выполнить озвучку
+                    <span id="runSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                </button>
+
+                <!-- 2. Lipsync -->
+                <button id="lipsyncBtn" type="button"
+                        class="btn btn-outline-secondary btn-sm no-drag w-100">
+                    2. Выполнить lipsync
+                </button>
+
+                <!-- 3. Выровнять длину -->
+                <button id="alignBtn" type="button"
+                        class="btn btn-outline-secondary btn-sm no-drag w-100">
+                    3. Выровнять длину
+                </button>
+
+                <!-- 4. Свести закадр -->
+                <button id="mixingBtn" type="button"
+                        class="btn btn-outline-secondary btn-sm no-drag w-100">
+                    4. Свести закадр
+                </button>
+
+            </div>
         </div>
+
+
+
 
 
     </form>

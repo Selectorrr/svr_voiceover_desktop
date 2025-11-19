@@ -1,17 +1,20 @@
 // main.js
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
-const Docker = require('dockerode');
 const ProgressBar = require('electron-progressbar');
 const { PassThrough } = require('stream');
 const fs = require('fs/promises');
 
-const dockerSocket = process.platform === 'win32'
-    ? '//./pipe/docker_engine'
-    : '/var/run/docker.sock';
-console.log(`Используется Docker-сокет: ${dockerSocket}`);
+const Docker = require('dockerode');
 
-const docker = new Docker({ socketPath: dockerSocket });
+
+// для дебага — просто посмотреть, что видит процесс
+console.log('DOCKER_HOST =', process.env.DOCKER_HOST);
+console.log('DOCKER_CONTEXT =', process.env.DOCKER_CONTEXT);
+
+// пусть dockerode сам решает, как коннектиться (как docker CLI)
+const docker = new Docker();
+
 let mainWindow;
 let currentContainerId = null; // хранит ID активного контейнера
 
@@ -29,7 +32,7 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         title: 'SVR Voiceover Desktop',
         width: 575,
-        height: 610,
+        height: 650,
         frame: false,
         autoHideMenuBar: true,
         resizable: false,
@@ -88,6 +91,9 @@ async function pullImage(image) {
 
 async function runContainer(cfg) {
     const wc = mainWindow.webContents;
+    const mode = cfg.mode || 'synthesize';
+
+    wc.send('container-log', `Режим: ${mode}`);
     wc.send('container-log', `Получена конфигурация: ${JSON.stringify(cfg)}`);
 
     const image = 'selector/voiceover:latest';
@@ -95,40 +101,72 @@ async function runContainer(cfg) {
         const imgs = await docker.listImages({ filters: { reference: [image] } });
         if (!imgs.length) await pullImage(image);
 
-        const args = [
-            '--api_key', cfg.api_key,
-            '--ext', cfg.ext,
-            '--batch_size', String(cfg.batch_size),
-        ];
-
-        if (cfg.n_jobs)              args.push('--n_jobs', String(cfg.n_jobs));
-        if (cfg.providers)           args.push('--providers', ...cfg.providers);
-        if (cfg.csv_delimiter)       args.push('--csv_delimiter', cfg.csv_delimiter);
-        if (cfg.path_filter)         args.push('--path_filter', cfg.path_filter);
-        // if (cfg.tone_sample_len)     args.push('--tone_sample_len', String(cfg.tone_sample_len));
-        // if (cfg.min_len_deviation)   args.push('--min_len_deviation', String(cfg.min_len_deviation));
-
-        if (cfg.is_strict_len)       args.push('--is_strict_len');
-        if (cfg.is_use_voice_len)    args.push('--is_use_voice_len');
-        if (cfg.is_respect_mos)      args.push('--is_respect_mos');
-
         const hostConfig = { AutoRemove: true };
         if (cfg.workdir) {
             hostConfig.Binds = [`${cfg.workdir}:/workspace/SynthVoiceRu/workspace`];
         }
 
-        // Если выбрано GPU, добавляем --gpus all
-        if (cfg.providers.includes('CUDAExecutionProvider')) {
+        // GPU только для основной озвучки (если нужно — можешь оставить и для других)
+        if (cfg.providers && cfg.providers.includes('CUDAExecutionProvider')) {
             hostConfig.DeviceRequests = [{
                 Driver: 'nvidia',
-                Count: -1,            // -1 означает "все GPU"
+                Count: -1,
                 Capabilities: [['gpu']],
             }];
             wc.send('container-log', 'Используем все доступные GPU (--gpus all)');
         }
 
-        wc.send('container-log', `Аргументы: ${args.join(' ')}`);
-        const container = await docker.createContainer({ Image: image, Cmd: args, HostConfig: hostConfig });
+        let createOptions = { Image: image, HostConfig: hostConfig };
+
+
+        if (mode === 'synthesize') {
+            const args = [
+                '--api_key', cfg.api_key,
+                '--ext', cfg.ext,
+                '--batch_size', String(cfg.batch_size),
+                '--csv_delimiter', cfg.csv_delimiter || ',',
+                '--path_filter', cfg.path_filter || ''
+            ];
+
+            if (cfg.n_jobs)    args.push('--n_jobs', String(cfg.n_jobs));
+            if (cfg.providers) args.push('--providers', ...cfg.providers);
+
+            // всегда включаем качество
+            args.push('--is_respect_mos');
+
+            if (cfg.tone_sample_len) {
+                args.push('--tone_sample_len', String(cfg.tone_sample_len));
+            }
+
+            wc.send('container-log', `Аргументы entrypoint: ${args.join(' ')}`);
+
+            // для основной озвучки не трогаем Entrypoint — используем тот, что в образе
+            createOptions.Cmd = args;
+
+        } else if (mode === 'lipsync') {
+            wc.send('container-log', 'Запуск lipsync.py');
+            createOptions.Entrypoint = ['python', 'lipsync.py'];
+            createOptions.Cmd = [];
+
+        } else if (mode === 'align') {
+            wc.send('container-log', 'Запуск align.py');
+            const cmd = [];
+            if (cfg.align_use_voice_len) {
+                cmd.push('--use-voice-len');
+            }
+            createOptions.Entrypoint = ['python', 'align.py'];
+            createOptions.Cmd = cmd;
+
+        } else if (mode === 'mixing') {
+            wc.send('container-log', 'Запуск mixing.py');
+            createOptions.Entrypoint = ['python', 'mixing.py'];
+            createOptions.Cmd = [];
+
+        } else {
+            throw new Error(`Неизвестный режим: ${mode}`);
+        }
+
+        const container = await docker.createContainer(createOptions);
         currentContainerId = container.id;
         wc.send('container-log', `Создан контейнер ${container.id}`);
 
@@ -149,6 +187,7 @@ async function runContainer(cfg) {
         currentContainerId = null;
     }
 }
+
 
 ipcMain.on('stop-container', async () => {
     if (!currentContainerId) {
@@ -175,6 +214,7 @@ ipcMain.handle('select-workdir', async () => {
 app.whenReady().then(async () => {
     try {
         await docker.ping();
+        console.log('docker.ping OK');
         createWindow();
 
         ipcMain.on('run-container', (_e, cfg) => runContainer(cfg));
@@ -191,6 +231,7 @@ app.whenReady().then(async () => {
             if (BrowserWindow.getAllWindows().length === 0) createWindow();
         });
     } catch (err) {
+        console.error('docker.ping error:', err);
         const { response } = await dialog.showMessageBox({
             type: 'error',
             title: 'Docker недоступен',

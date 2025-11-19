@@ -24,6 +24,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const populateSampleBtn  = document.getElementById('populateSampleBtn');
     const openDirBtn        = document.getElementById('openDirBtn');
     const charCountEl = document.getElementById('charCount');
+    const lipsyncBtn    = document.getElementById('lipsyncBtn');
+    const alignBtn      = document.getElementById('alignBtn');
+    const mixingBtn     = document.getElementById('mixingBtn');
+
 
 
 
@@ -149,21 +153,18 @@ window.addEventListener('DOMContentLoaded', () => {
         if (line.includes('Контейнер остановлен и удалён.')) {
             stopBtn.disabled=true; stopSpinner.classList.add('d-none');
         }
-        if (line.includes('Общий прогресс:')) {
-            // пример: "Общий прогресс:   45%|#####     | 360/80683 [00:45<10:20,  1.23s/it]"
-            const m = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
-            if (m) {
-                const pct     = Number(m[1]);
-                const elapsed = m[2];      // "00:45"
-                const eta     = m[3];      // "10:20"
-                const rate    = m[4];      // "1.23s/it"
-                // обновляем бар
-                progressBar.style.width = pct + '%';
-                // показываем и обновляем лейбл
-                progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}`;
-                progressInline.classList.remove('d-none');
-                progressLabel.classList.remove('d-none');
-            }
+        // парсим любые tqdm/pqdm-строки вида "… 45%|##### | … [00:45<10:20,  1.23s/it]"
+        const pm = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
+        if (pm) {
+            const pct     = Number(pm[1]) || 0;
+            const elapsed = pm[2];
+            const eta     = pm[3];
+            const rate    = pm[4];
+
+            progressBar.style.width = pct + '%';
+            progressInline.classList.remove('d-none');
+            progressLabel.classList.remove('d-none');
+            progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}`;
         }
         const m = line.match(/Доступно\s+(\d+)\s+символ/);
         if (m) {
@@ -191,14 +192,8 @@ window.addEventListener('DOMContentLoaded', () => {
         logsEl.textContent='';
         startRun();
         const cfg = {
+            mode:            'synthesize',
             api_key:         document.getElementById('api_key').value,
-            is_strict_len:   document.getElementById('is_strict_len').checked,
-            is_respect_mos:  document.getElementById('is_respect_mos').checked,
-            is_use_voice_len:document.getElementById('is_use_voice_len').checked,
-
-            tone_sample_len: Number(document.getElementById('tone_sample_len').value),
-            min_len_deviation: Number(document.getElementById('min_len_deviation').value),
-
             path_filter:     document.getElementById('path_filter').value,
             ext:             document.getElementById('ext').value,
             batch_size:      Number(document.getElementById('batch_size').value),
@@ -209,6 +204,60 @@ window.addEventListener('DOMContentLoaded', () => {
         };
         window.api.runContainer(cfg);
     };
+
+    function ensureWorkdirOrToast() {
+        if (!workdirInput.value) {
+            workdirInput.classList.add('is-invalid');
+            showToast('Сначала выбери рабочую папку', 'warning');
+            return false;
+        }
+        return true;
+    }
+
+    function buildBaseCfg() {
+        return {
+            workdir:       workdirInput.value || null,
+            csv_delimiter: document.getElementById('csv_delimiter').value,
+            providers:     [document.getElementById('device').value],
+            // api_key тут не нужен, скрипты lipsync/align/mixing его не используют
+        };
+    }
+
+    lipsyncBtn.onclick = () => {
+        if (!ensureWorkdirOrToast()) return;
+        logsEl.textContent = '';
+        startRun();
+        const cfg = {
+            ...buildBaseCfg(),
+            mode: 'lipsync',
+        };
+        window.api.runContainer(cfg);
+    };
+
+    alignBtn.onclick = () => {
+        if (!ensureWorkdirOrToast()) return;
+        logsEl.textContent = '';
+        startRun();
+        const cfg = {
+            ...buildBaseCfg(),
+            mode: 'align',
+            // если хочешь всегда использовать длину речи:
+            align_use_voice_len: true,
+        };
+        window.api.runContainer(cfg);
+    };
+
+    mixingBtn.onclick = () => {
+        if (!ensureWorkdirOrToast()) return;
+        logsEl.textContent = '';
+        startRun();
+        const cfg = {
+            ...buildBaseCfg(),
+            mode: 'mixing',
+        };
+        window.api.runContainer(cfg);
+    };
+
 
     populateSampleBtn.addEventListener('click', async () => {
         const dir = workdirInput.value;
