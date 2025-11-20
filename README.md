@@ -75,15 +75,17 @@
 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt) — свободно используйте и дорабатывайте под себя.
 Спасибо, что выбрали SVR Voiceover!
 
+**Сборка Exe**
+из под cmd с правами админа:
+```
+npm install
+npx electron-builder --win --x64
+```
+
 **Сборка AppImage**
 
-из под wsl:
-
-очищаем кеши
+из под powershell:
 ```
-rm -rf dist node_modules package-lock.json
-```
-собираем
-```
+rm -rf node_modules package-lock.json
 docker run --rm -it -v "${PWD}:/project" -v "$env:USERPROFILE\.cache\electron-builder:/home/builder/.cache/electron-builder" -w /project node:18-bullseye bash -lc "apt update && apt install -y git python3 make g++ squashfs-tools && npm install && npx electron-builder --linux --x64"
 ```
