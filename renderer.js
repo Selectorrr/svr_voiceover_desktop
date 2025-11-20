@@ -27,9 +27,9 @@ window.addEventListener('DOMContentLoaded', () => {
     const lipsyncBtn    = document.getElementById('lipsyncBtn');
     const alignBtn      = document.getElementById('alignBtn');
     const mixingBtn     = document.getElementById('mixingBtn');
-
-
-
+    const lipsyncSpinner = document.getElementById('lipsyncSpinner');
+    const alignSpinner   = document.getElementById('alignSpinner');
+    const mixingSpinner  = document.getElementById('mixingSpinner');
 
     logsCollapse.addEventListener('show.bs.collapse', () => {
         logsToggleIcon.classList.replace('bi-chevron-down', 'bi-chevron-up');
@@ -122,18 +122,54 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     // UI state
-    function startRun(){
-        runBtn.disabled = true;
-        runSpinner.classList.remove('d-none');
+    function startRun(mode){
+        // выключаем все кнопки
+        runBtn.disabled     = true;
+        lipsyncBtn.disabled = true;
+        alignBtn.disabled   = true;
+        mixingBtn.disabled  = true;
+
+        // скрываем все спиннеры
+        runSpinner.classList.add('d-none');
+        lipsyncSpinner.classList.add('d-none');
+        alignSpinner.classList.add('d-none');
+        mixingSpinner.classList.add('d-none');
+
+        // сброс прогресса
+        progressBar.style.width = '0%';
         progressInline.classList.remove('d-none');
+        progressLabel.classList.add('d-none');
+        progressLabel.innerText = '';
+
+        // показываем спиннер только для активного режима
+        if (mode === 'synthesize') {
+            runSpinner.classList.remove('d-none');
+        } else if (mode === 'lipsync') {
+            lipsyncSpinner.classList.remove('d-none');
+        } else if (mode === 'align') {
+            alignSpinner.classList.remove('d-none');
+        } else if (mode === 'mixing') {
+            mixingSpinner.classList.remove('d-none');
+        }
+
         stopBtn.disabled = false;
         stopSpinner.classList.add('d-none');
     }
+
     function endRun(){
-        runBtn.disabled = false;
+        runBtn.disabled     = false;
+        lipsyncBtn.disabled = false;
+        alignBtn.disabled   = false;
+        mixingBtn.disabled  = false;
+
         runSpinner.classList.add('d-none');
+        lipsyncSpinner.classList.add('d-none');
+        alignSpinner.classList.add('d-none');
+        mixingSpinner.classList.add('d-none');
+
         progressInline.classList.add('d-none');
     }
+
 
     // Stop
     stopBtn.onclick = () => {
@@ -147,15 +183,25 @@ window.addEventListener('DOMContentLoaded', () => {
     window.api.onLog(line => {
         logsEl.textContent += line + '\n';
         logsEl.scrollTop = logsEl.scrollHeight;
+
         if (line.startsWith('❌')) {
             endRun(); showToast(line,'danger');
         }
         if (line.includes('Контейнер остановлен и удалён.')) {
             stopBtn.disabled=true; stopSpinner.classList.add('d-none');
         }
-        // парсим любые tqdm/pqdm-строки вида "… 45%|##### | … [00:45<10:20,  1.23s/it]"
+
+        // --- обновляем баланс символов ---
+        const m = line.match(/Доступно\s+(\d+)\s+символ/);
+        if (m) {
+            const available = Number(m[1]);
+            charCountEl.innerHTML = '&nbsp;' + available.toLocaleString('ru-RU');
+            // ВАЖНО: не выходим, но ниже при парсинге прогресса эту строку отфильтруем
+        }
+
+        // --- прогресс: игнорируем строки "Доступно ... символа: XX%|..." ---
         const pm = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
-        if (pm) {
+        if (pm && !/Доступно\s+\d+\s+символ/.test(line)) {
             const pct     = Number(pm[1]) || 0;
             const elapsed = pm[2];
             const eta     = pm[3];
@@ -165,11 +211,6 @@ window.addEventListener('DOMContentLoaded', () => {
             progressInline.classList.remove('d-none');
             progressLabel.classList.remove('d-none');
             progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}`;
-        }
-        const m = line.match(/Доступно\s+(\d+)\s+символ/);
-        if (m) {
-            const available = Number(m[1]);
-            charCountEl.innerHTML = '&nbsp;' + available.toLocaleString('ru-RU');
         }
     });
     window.api.onDone(() => {
@@ -190,7 +231,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!form.checkValidity()) return form.classList.add('was-validated');
         form.classList.remove('was-validated');
         logsEl.textContent='';
-        startRun();
+        startRun('synthesize');
         const cfg = {
             mode:            'synthesize',
             api_key:         document.getElementById('api_key').value,
@@ -226,7 +267,7 @@ window.addEventListener('DOMContentLoaded', () => {
     lipsyncBtn.onclick = () => {
         if (!ensureWorkdirOrToast()) return;
         logsEl.textContent = '';
-        startRun();
+        startRun('lipsync');
         const cfg = {
             ...buildBaseCfg(),
             mode: 'lipsync',
@@ -237,11 +278,10 @@ window.addEventListener('DOMContentLoaded', () => {
     alignBtn.onclick = () => {
         if (!ensureWorkdirOrToast()) return;
         logsEl.textContent = '';
-        startRun();
+        startRun('align');
         const cfg = {
             ...buildBaseCfg(),
             mode: 'align',
-            // если хочешь всегда использовать длину речи:
             align_use_voice_len: true,
         };
         window.api.runContainer(cfg);
@@ -250,13 +290,14 @@ window.addEventListener('DOMContentLoaded', () => {
     mixingBtn.onclick = () => {
         if (!ensureWorkdirOrToast()) return;
         logsEl.textContent = '';
-        startRun();
+        startRun('mixing');
         const cfg = {
             ...buildBaseCfg(),
             mode: 'mixing',
         };
         window.api.runContainer(cfg);
     };
+
 
 
     populateSampleBtn.addEventListener('click', async () => {

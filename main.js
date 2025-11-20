@@ -32,7 +32,7 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         title: 'SVR Voiceover Desktop',
         width: 575,
-        height: 650,
+        height: 670,
         frame: false,
         autoHideMenuBar: true,
         resizable: false,
