@@ -157,6 +157,11 @@ async function runContainer(cfg) {
             pushArg(args, '--max_extra_speed', cfg.max_extra_speed);
             pushArg(args, '--vc_type', cfg.vc_type);
 
+            // только для default конверсии
+            if ((cfg.vc_type || '') === 'default') {
+                pushArg(args, '--vc_default_alpha', cfg.vc_default_alpha);
+            }
+
             wc.send('container-log', `Аргументы entrypoint: ${args.join(' ')}`);
 
             // для основной озвучки не трогаем Entrypoint — используем тот, что в образе

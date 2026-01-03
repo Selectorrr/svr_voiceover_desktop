@@ -1,6 +1,6 @@
 {
   "name": "svr_voiceover_desktop",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Desktop version for SVR_VOICEOVER",
   "license": "Apache-2.0",
   "main": "main.js",

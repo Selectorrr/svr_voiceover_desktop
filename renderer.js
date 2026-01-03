@@ -37,6 +37,12 @@ window.addEventListener('DOMContentLoaded', () => {
     const prosodyRange   = document.getElementById('prosody_cond_range');
     const prosodyNumber  = document.getElementById('prosody_cond');
 
+    // VC default alpha (показываем только когда vc_type=default)
+    const vcTypeSelect   = document.getElementById('vc_type');
+    const vcAlphaWrap    = document.getElementById('vc_default_alpha_wrap');
+    const vcAlphaRange   = document.getElementById('vc_default_alpha_range');
+    const vcAlphaNumber  = document.getElementById('vc_default_alpha');
+
     const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
 
     function safeParseJson(s) {
@@ -87,6 +93,22 @@ window.addEventListener('DOMContentLoaded', () => {
         if (from === 'number') prosodyRange.value = prosodyNumber.value;
     }
 
+    function syncVcAlpha(from) {
+        if (!vcAlphaRange || !vcAlphaNumber) return;
+        if (from === 'range') vcAlphaNumber.value = vcAlphaRange.value;
+        if (from === 'number') vcAlphaRange.value = vcAlphaNumber.value;
+    }
+
+    function updateVcAlphaVisibility() {
+        if (!vcAlphaWrap || !vcTypeSelect) return;
+        const isDefault = (vcTypeSelect.value || '') === 'default';
+        vcAlphaWrap.style.display = isDefault ? '' : 'none';
+
+        // чтобы не мешались в табе и не выглядели активными
+        if (vcAlphaRange)  vcAlphaRange.disabled  = !isDefault;
+        if (vcAlphaNumber) vcAlphaNumber.disabled = !isDefault;
+    }
+
     // подтягиваем сохранённые настройки
     const saved = loadSettings();
     if (saved) {
@@ -106,12 +128,19 @@ window.addEventListener('DOMContentLoaded', () => {
     prosodyRange?.addEventListener('input', () => { syncProsody('range'); saveSettings(); });
     prosodyNumber?.addEventListener('input', () => { syncProsody('number'); saveSettings(); });
 
+    // VC default alpha
+    syncVcAlpha('number');
+    updateVcAlphaVisibility();
+    vcTypeSelect?.addEventListener('change', () => { updateVcAlphaVisibility(); saveSettings(); });
+    vcAlphaRange?.addEventListener('input', () => { syncVcAlpha('range'); saveSettings(); });
+    vcAlphaNumber?.addEventListener('input', () => { syncVcAlpha('number'); saveSettings(); });
+
     // сохраняем основные поля
     const idsToPersist = [
         'api_key','path_filter','ext','csv_delimiter','device','batch_size',
         'tone_sample_len','is_respect_mos',
         'dur_norm_low','dur_high_t0','dur_high_t1','dur_high_k','dur_norm_thr_low','dur_norm_thr_high',
-        'reinit_every','min_prosody_len','max_extra_speed','vc_type'
+        'reinit_every','min_prosody_len','max_extra_speed','vc_type','vc_default_alpha'
     ];
     idsToPersist.forEach(id => {
         const el = document.getElementById(id);
@@ -368,6 +397,7 @@ window.addEventListener('DOMContentLoaded', () => {
             min_prosody_len:  Number(document.getElementById('min_prosody_len').value),
             max_extra_speed:  Number(document.getElementById('max_extra_speed').value),
             vc_type:          document.getElementById('vc_type').value,
+            vc_default_alpha: Number((vcAlphaNumber?.value ?? '0.85')),
         };
         window.api.runContainer(cfg);
     };

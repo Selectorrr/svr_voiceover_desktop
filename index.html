@@ -268,7 +268,22 @@
                                                 <i class="bi bi-info-circle-fill"></i>
                                             </span>
                                             </div>
+
+                                            <!-- только для vc_type=default -->
+                                            <div id="vc_default_alpha_wrap" class="mt-2">
+                                                <label class="form-label x-small mb-1">Просодия ↔ тембр (default)</label>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <input type="range" id="vc_default_alpha_range" class="form-range" min="0"
+                                                           max="1" step="0.01" value="0.85" style="margin:0;">
+                                                    <input type="number" id="vc_default_alpha"
+                                                           class="form-control form-control-sm" value="0.85" min="0" max="1"
+                                                           step="0.01" style="width:90px;">
+                                                    <i class="bi bi-info-circle-fill info-trigger"
+                                                       data-info="Пропорция тембра к просодии для <b>default</b> конверсии. <br>0 — больше тембра, 1 — больше просодии."></i>
+                                                </div>
+                                            </div>
                                         </div>
+
                                         <div class="col-md-6">
                                             <label class="form-label x-small">Следовать оригинальной просодии</label>
                                             <div class="d-flex align-items-center gap-2">
