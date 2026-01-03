@@ -31,6 +31,109 @@ window.addEventListener('DOMContentLoaded', () => {
     const alignSpinner   = document.getElementById('alignSpinner');
     const mixingSpinner  = document.getElementById('mixingSpinner');
 
+    // --- элементы доп. параметров ---
+    const nJobsInput     = document.getElementById('n_jobs');
+    const nJobsAuto      = document.getElementById('n_jobs_auto');
+    const prosodyRange   = document.getElementById('prosody_cond_range');
+    const prosodyNumber  = document.getElementById('prosody_cond');
+
+    const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
+
+    function safeParseJson(s) {
+        try { return JSON.parse(s); } catch { return null; }
+    }
+
+    function saveSettings() {
+        const cfg = collectCfgForSave();
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(cfg));
+    }
+
+    function loadSettings() {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        return raw ? safeParseJson(raw) : null;
+    }
+
+    function setIfExists(id, value) {
+        const el = document.getElementById(id);
+        if (!el || value === undefined || value === null) return;
+        if (el.type === 'checkbox') el.checked = !!value;
+        else {
+            const v = String(value);
+            // если это select и значения нет среди option — мягко откатываемся на дефолт
+            if (el.tagName === 'SELECT') {
+                const has = Array.from(el.options || []).some(o => o.value === v);
+                el.value = has ? v : (el.options?.[0]?.value ?? '');
+            } else {
+                el.value = v;
+            }
+        }
+    }
+
+    function setAutoJobsUi(isAuto) {
+        if (!nJobsInput || !nJobsAuto) return;
+        nJobsAuto.checked = !!isAuto;
+        nJobsInput.disabled = !!isAuto;
+        if (isAuto) {
+            nJobsInput.value = '';
+            nJobsInput.placeholder = 'Авто';
+        } else if (!nJobsInput.value) {
+            nJobsInput.value = '1';
+        }
+    }
+
+    function syncProsody(from) {
+        if (!prosodyRange || !prosodyNumber) return;
+        if (from === 'range') prosodyNumber.value = prosodyRange.value;
+        if (from === 'number') prosodyRange.value = prosodyNumber.value;
+    }
+
+    // подтягиваем сохранённые настройки
+    const saved = loadSettings();
+    if (saved) {
+        Object.entries(saved).forEach(([k, v]) => setIfExists(k, v));
+    }
+
+    // авто-потоки
+    setAutoJobsUi(saved?.n_jobs_auto ?? true);
+    nJobsAuto?.addEventListener('change', () => {
+        setAutoJobsUi(nJobsAuto.checked);
+        saveSettings();
+    });
+    nJobsInput?.addEventListener('input', saveSettings);
+
+    // синхронизируем просодию
+    syncProsody('number');
+    prosodyRange?.addEventListener('input', () => { syncProsody('range'); saveSettings(); });
+    prosodyNumber?.addEventListener('input', () => { syncProsody('number'); saveSettings(); });
+
+    // сохраняем основные поля
+    const idsToPersist = [
+        'api_key','path_filter','ext','csv_delimiter','device','batch_size',
+        'tone_sample_len','is_respect_mos',
+        'dur_norm_low','dur_high_t0','dur_high_t1','dur_high_k','dur_norm_thr_low','dur_norm_thr_high',
+        'reinit_every','min_prosody_len','max_extra_speed','vc_type'
+    ];
+    idsToPersist.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const evt = (el.tagName === 'SELECT' || el.type === 'checkbox') ? 'change' : 'input';
+        el.addEventListener(evt, saveSettings);
+    });
+
+    function collectCfgForSave() {
+        const out = {};
+        // сохраняем только то, что у нас есть на форме
+        idsToPersist.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            out[id] = (el.type === 'checkbox') ? el.checked : el.value;
+        });
+        out.n_jobs_auto = nJobsAuto?.checked ?? true;
+        out.n_jobs = nJobsInput?.value ?? '';
+        out.prosody_cond_range = prosodyRange?.value ?? '';
+        return out;
+    }
+
     logsCollapse.addEventListener('show.bs.collapse', () => {
         logsToggleIcon.classList.replace('bi-chevron-down', 'bi-chevron-up');
     });
@@ -232,16 +335,39 @@ window.addEventListener('DOMContentLoaded', () => {
         form.classList.remove('was-validated');
         logsEl.textContent='';
         startRun('synthesize');
+
+        const device = document.getElementById('device').value;
+        const providers = device === 'CUDAExecutionProvider'
+            ? ['CUDAExecutionProvider', 'CPUExecutionProvider']
+            : ['CPUExecutionProvider'];
+
         const cfg = {
             mode:            'synthesize',
             api_key:         document.getElementById('api_key').value,
             path_filter:     document.getElementById('path_filter').value,
             ext:             document.getElementById('ext').value,
             batch_size:      Number(document.getElementById('batch_size').value),
-            n_jobs:          Number(document.getElementById('n_jobs').value),
+            n_jobs:          (nJobsAuto && nJobsAuto.checked) ? null : Number(nJobsInput.value),
             csv_delimiter:   document.getElementById('csv_delimiter').value,
             workdir:         workdirInput.value || null,
-            providers:       [document.getElementById('device').value],
+            providers,
+
+            // --- недостающие параметры entrypoint.py ---
+            tone_sample_len: Number(document.getElementById('tone_sample_len').value),
+            is_respect_mos:  document.getElementById('is_respect_mos').checked,
+
+            dur_norm_low:      Number(document.getElementById('dur_norm_low').value),
+            dur_high_t0:       Number(document.getElementById('dur_high_t0').value),
+            dur_high_t1:       Number(document.getElementById('dur_high_t1').value),
+            dur_high_k:        Number(document.getElementById('dur_high_k').value),
+            dur_norm_thr_low:  Number(document.getElementById('dur_norm_thr_low').value),
+            dur_norm_thr_high: Number(document.getElementById('dur_norm_thr_high').value),
+
+            reinit_every:     Number(document.getElementById('reinit_every').value),
+            prosody_cond:     Number(prosodyNumber.value),
+            min_prosody_len:  Number(document.getElementById('min_prosody_len').value),
+            max_extra_speed:  Number(document.getElementById('max_extra_speed').value),
+            vc_type:          document.getElementById('vc_type').value,
         };
         window.api.runContainer(cfg);
     };
@@ -256,10 +382,14 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildBaseCfg() {
+        const device = document.getElementById('device').value;
+        const providers = device === 'CUDAExecutionProvider'
+            ? ['CUDAExecutionProvider', 'CPUExecutionProvider']
+            : ['CPUExecutionProvider'];
         return {
             workdir:       workdirInput.value || null,
             csv_delimiter: document.getElementById('csv_delimiter').value,
-            providers:     [document.getElementById('device').value],
+            providers,
             // api_key тут не нужен, скрипты lipsync/align/mixing его не используют
         };
     }

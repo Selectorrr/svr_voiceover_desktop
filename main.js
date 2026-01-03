@@ -120,6 +120,13 @@ async function runContainer(cfg) {
 
 
         if (mode === 'synthesize') {
+            const pushArg = (arr, key, value) => {
+                if (value === undefined || value === null) return;
+                const v = String(value);
+                if (v === 'NaN' || v.trim() === '') return;
+                arr.push(key, v);
+            };
+
             const args = [
                 '--api_key', cfg.api_key,
                 '--ext', cfg.ext,
@@ -131,12 +138,24 @@ async function runContainer(cfg) {
             if (cfg.n_jobs)    args.push('--n_jobs', String(cfg.n_jobs));
             if (cfg.providers) args.push('--providers', ...cfg.providers);
 
-            // всегда включаем качество
-            args.push('--is_respect_mos');
+            // MOS: включить/выключить
+            if (cfg.is_respect_mos === false) args.push('--no_respect_mos');
+            else args.push('--is_respect_mos');
 
-            if (cfg.tone_sample_len) {
-                args.push('--tone_sample_len', String(cfg.tone_sample_len));
-            }
+            pushArg(args, '--tone_sample_len', cfg.tone_sample_len);
+
+            pushArg(args, '--dur_norm_low', cfg.dur_norm_low);
+            pushArg(args, '--dur_high_t0', cfg.dur_high_t0);
+            pushArg(args, '--dur_high_t1', cfg.dur_high_t1);
+            pushArg(args, '--dur_high_k', cfg.dur_high_k);
+            pushArg(args, '--dur_norm_thr_low', cfg.dur_norm_thr_low);
+            pushArg(args, '--dur_norm_thr_high', cfg.dur_norm_thr_high);
+
+            pushArg(args, '--reinit_every', cfg.reinit_every);
+            pushArg(args, '--prosody_cond', cfg.prosody_cond);
+            pushArg(args, '--min_prosody_len', cfg.min_prosody_len);
+            pushArg(args, '--max_extra_speed', cfg.max_extra_speed);
+            pushArg(args, '--vc_type', cfg.vc_type);
 
             wc.send('container-log', `Аргументы entrypoint: ${args.join(' ')}`);
 

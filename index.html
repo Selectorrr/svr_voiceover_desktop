@@ -74,6 +74,15 @@
         #stopBtn:disabled, #runBtn:disabled {
             display: none;
         }
+
+        .accordion-button.accordion-button-sm {
+            padding: .5rem .75rem;
+            font-size: .9rem;
+        }
+
+        .accordion-body {
+            padding: .75rem;
+        }
     </style>
 </head>
 <body class="bg-body text-body">
@@ -194,6 +203,21 @@
         </div>
 
 
+        <div class="col-md-3">
+            <label for="csv_delimiter" class="form-label small">
+                <i class="bi bi-slash me-1"></i>CSV-разделитель
+            </label>
+            <div class="input-group input-group-sm">
+                <input type="text" id="csv_delimiter"
+                       class="form-control form-control-sm"
+                       value="," maxlength="1">
+                <span class="input-group-text info-trigger"
+                      data-info="Символ-разделитель колонок в CSV (по умолчанию «,»).">
+                    <i class="bi bi-info-circle-fill"></i>
+                </span>
+            </div>
+        </div>
+
         <!-- Дополнительные настройки -->
         <div class="col-12 d-flex justify-content-between align-items-center">
             <!-- Кнопка «Доп. настройки» -->
@@ -214,66 +238,293 @@
         <div class="collapse mt-2 animate__animated animate__fadeIn" id="advancedOptions">
             <div class="card p-3">
                 <div class="row g-3">
-                    <!-- CSV-разделитель -->
-                    <div class="col-md-3">
-                        <label for="csv_delimiter" class="form-label x-small">
-                            <i class="bi bi-slash me-1"></i>CSV-разделитель
-                        </label>
-                        <div class="input-group input-group-sm">
-                            <input type="text" id="csv_delimiter"
-                                   class="form-control form-control-sm"
-                                   value="," maxlength="1">
-                            <span class="input-group-text info-trigger"
-                                  data-info="Символ-разделитель колонок в CSV (по умолчанию «,»).">
+                    <!-- Более тонкие настройки -->
+                    <div class="accordion mt-3" id="advancedAccordion">
+
+                        <!-- Просодия и VC -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingProsody">
+                                <button class="accordion-button accordion-button-sm" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapseProsody"
+                                        aria-expanded="false" aria-controls="collapseProsody">
+                                    <i class="bi bi-music-note-beamed me-2"></i>Просодия и VC
+                                </button>
+                            </h2>
+                            <div id="collapseProsody" class="accordion-collapse collapse show"
+                                 aria-labelledby="headingProsody" data-bs-parent="#advancedAccordion">
+                                <div class="accordion-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <label for="vc_type" class="form-label x-small">Тип конверсии голоса
+                                                (VC)</label>
+                                            <div class="input-group input-group-sm">
+                                                <select id="vc_type" class="form-select form-select-sm">
+                                                    <option value="default">default</option>
+                                                    <option value="native_bigvgan">native_bigvgan</option>
+                                                    <option value="native_vocos">native_vocos</option>
+                                                </select>
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="VC тип — это режим конверсии голоса. <br><b>default</b> — авто/по умолчанию. <br><b>native_bigvgan</b> — нативный пайплайн с BigVGAN. <br><b>native_vocos</b> — нативный пайплайн с Vocos.">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label x-small">Следовать оригинальной просодии</label>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input type="range" id="prosody_cond_range" class="form-range" min="0"
+                                                       max="1" step="0.05" value="0.6" style="margin:0;">
+                                                <input type="number" id="prosody_cond"
+                                                       class="form-control form-control-sm" value="0.6" min="0" max="1"
+                                                       step="0.05" style="width:90px;">
+                                                <i class="bi bi-info-circle-fill info-trigger"
+                                                   data-info="0 — максимально следовать., 1 — почти не следовать оригиналу"></i>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <label for="min_prosody_len" class="form-label x-small">Мин. длина
+                                                просодии</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="min_prosody_len"
+                                                       class="form-control form-control-sm"
+                                                       value="2.0" step="0.1" min="0">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Если исходная просодия короче этого значения (сек), она будет заменена на тембр.">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Тембр и качество -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingQuality">
+                                <button class="accordion-button accordion-button-sm collapsed" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapseQuality"
+                                        aria-expanded="true" aria-controls="collapseQuality">
+                                    <i class="bi bi-soundwave me-2"></i>Тембр и качество
+                                </button>
+                            </h2>
+                            <div id="collapseQuality" class="accordion-collapse collapse"
+                                 aria-labelledby="headingQuality" data-bs-parent="#advancedAccordion">
+                                <div class="accordion-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="tone_sample_len" class="form-label x-small">
+                                                <i class="bi bi-person-voice me-1"></i>Длина сэмпла голоса
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="tone_sample_len"
+                                                       class="form-control form-control-sm"
+                                                       value="7500" min="1000" step="100">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Сколько миллисекунд исходного голоса собирать в сэмпл (тембр). Больше — стабильнее тембр, но дольше подготовка.">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4 d-flex flex-column justify-content-end">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch"
+                                                       id="is_respect_mos" checked>
+                                                <label class="form-check-label x-small" for="is_respect_mos">
+                                                    <i class="bi bi-stars me-1"></i>Учитывать качество (MOS)
+                                                    <i class="bi bi-info-circle-fill ms-1 info-trigger"
+                                                       data-info="Если включено — при сборке сэмпла тембра будут отбрасываться плохие по качеству куски (если модель MOS доступна)."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Темп речи -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTempo">
+                                <button class="accordion-button accordion-button-sm collapsed" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapseTempo"
+                                        aria-expanded="false" aria-controls="collapseTempo">
+                                    <i class="bi bi-speedometer2 me-2"></i>Темп речи
+                                </button>
+                            </h2>
+                            <div id="collapseTempo" class="accordion-collapse collapse"
+                                 aria-labelledby="headingTempo" data-bs-parent="#advancedAccordion">
+                                <div class="accordion-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="dur_norm_low" class="form-label x-small">Минимальный
+                                                темп</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="dur_norm_low"
+                                                       class="form-control form-control-sm"
+                                                       value="5.0" step="0.1" min="0">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Нижняя граница темпа речи (условные единицы/символы в сек).">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label for="max_extra_speed" class="form-label x-small">Макс. доп.
+                                                ускорение</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="max_extra_speed"
+                                                       class="form-control form-control-sm"
+                                                       value="0.15" step="0.01" min="0" max="1">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="На сколько можно дополнительно ускорить речь при необходимости (доля, например 0.15 = 15%).">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label class="form-label x-small">Макс. темп (кривая)</label>
+                                            <div class="row g-2">
+                                                <div class="col-4">
+                                                    <input type="number" id="dur_high_t0"
+                                                           class="form-control form-control-sm" value="1.0" step="0.1"
+                                                           min="0" placeholder="t0">
+                                                </div>
+                                                <div class="col-4">
+                                                    <input type="number" id="dur_high_t1"
+                                                           class="form-control form-control-sm" value="15.0" step="0.1"
+                                                           min="0" placeholder="t1">
+                                                </div>
+                                                <div class="col-4">
+                                                    <input type="number" id="dur_high_k"
+                                                           class="form-control form-control-sm" value="10.0" step="0.1"
+                                                           min="0" placeholder="k">
+                                                </div>
+                                            </div>
+                                            <div class="form-text text-muted small">t0 / t1 (сек) и k (кривизна)</div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="dur_norm_thr_low" class="form-label x-small">Допуск
+                                                снизу</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="dur_norm_thr_low"
+                                                       class="form-control form-control-sm"
+                                                       value="0.5" step="0.1" min="0">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Допустимое отклонение темпа речи от нижней границы.">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="dur_norm_thr_high" class="form-label x-small">Допуск
+                                                сверху</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="dur_norm_thr_high"
+                                                       class="form-control form-control-sm"
+                                                       value="4.0" step="0.1" min="0">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Допустимое отклонение темпа речи от верхней границы.">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Техническое -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTech">
+                                <button class="accordion-button accordion-button-sm collapsed" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapseTech"
+                                        aria-expanded="false" aria-controls="collapseTech">
+                                    <i class="bi bi-wrench-adjustable-circle me-2"></i>Техническое
+                                </button>
+                            </h2>
+                            <div id="collapseTech" class="accordion-collapse collapse"
+                                 aria-labelledby="headingTech" data-bs-parent="#advancedAccordion">
+                                <div class="accordion-body">
+                                    <!-- Устройство -->
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="device" class="form-label x-small">
+                                                <i class="bi bi-hdd-network-fill me-1"></i>Устройство
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <select id="device" class="form-select form-select-sm">
+                                                    <option value="CUDAExecutionProvider" selected>GPU (CUDA) + CPU
+                                                    </option>
+                                                    <option value="CPUExecutionProvider">Только CPU</option>
+                                                </select>
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Выберите устройство для ONNX Runtime. <br/><br/>
+<strong>GPU (CUDA) + CPU</strong> — используется CUDA, а CPU остаётся запасным провайдером;<br/>
+<strong>Только CPU</strong> — если нет NVIDIA GPU или нужно отладить. <br/><br/>Если у вас несколько видеокарт, будут использоваться все.">
                                 <i class="bi bi-info-circle-fill"></i>
                             </span>
-                        </div>
-                    </div>
-                    <!-- Устройство -->
-                    <div class="col-md-3">
-                        <label for="device" class="form-label x-small">
-                            <i class="bi bi-hdd-network-fill me-1"></i>Устройство
-                        </label>
-                        <div class="input-group input-group-sm">
-                            <select id="device" class="form-select form-select-sm">
-                                <option value="CUDAExecutionProvider" selected>GPU (CUDA)</option>
-                                <option value="CPUExecutionProvider">CPU</option>
-                            </select>
-                            <span class="input-group-text info-trigger"
-                                  data-info="Выберите тип устройства: GPU или CPU. Если у вас несколько видеокарт, будут использоваться все.">
-                                <i class="bi bi-info-circle-fill"></i>
-                            </span>
-                        </div>
-                    </div>
-                    <!-- Потоки -->
-                    <div class="col-md-3">
-                        <label for="n_jobs" class="form-label x-small">
-                            <i class="bi bi-gear-fill me-1"></i>Потоки
-                        </label>
-                        <div class="input-group input-group-sm">
-                            <input type="number" id="n_jobs"
-                                   class="form-control form-control-sm"
-                                   value="1" min="1">
-                            <span class="input-group-text info-trigger"
-                                  data-info="Один поток обычно занимает до ~12 ГБ видеопамяти. Если у вашей видеокарты ≥24 ГБ, можно увеличить число потоков для более эффективного использования GPU. При этом пропорционально увеличьте размер партии.">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="reinit_every" class="form-label x-small">Reinit every</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="reinit_every"
+                                                       class="form-control form-control-sm" value="0" min="0" step="1">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Как часто перезагружать ONNX-сессию (каждые <b>N</b> запусков). Это помогает освобождать память видеокарты, если VRAM не хватает. <br>0 — не перезагружать.">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                            </div>
+                                        </div>
+                                        <!-- Потоки -->
+                                        <div class="col-md-4">
+                                            <label for="n_jobs" class="form-label x-small">
+                                                <i class="bi bi-gear-fill me-1"></i>Потоки
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="n_jobs"
+                                                       class="form-control form-control-sm"
+                                                       placeholder="Авто" min="1" disabled>
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Один поток обычно занимает до ~12 ГБ видеопамяти. Если у вашей видеокарты ≥24 ГБ, можно увеличить число потоков для более эффективного использования GPU. При этом пропорционально увеличьте размер партии.">
                                 <i class="bi bi-info-circle-fill"></i>
                         </span>
-                        </div>
-                    </div>
-                    <!-- Размер партии -->
-                    <div class="col-md-3">
-                        <label for="batch_size" class="form-label x-small">
-                            <i class="bi bi-stack me-1"></i>Размер партии
-                        </label>
-                        <div class="input-group input-group-sm">
-                            <input type="number" id="batch_size"
-                                   class="form-control form-control-sm"
-                                   value="2" min="1" max="50">
-                            <span class="input-group-text info-trigger"
-                                  data-info="API токенизатора ограничен 30 запросами/мин. Увеличивайте размер партии, чтобы снизить число запросов.">
+                                            </div>
+                                            <div class="form-check form-switch mt-1">
+                                                <input class="form-check-input" type="checkbox" role="switch"
+                                                       id="n_jobs_auto" checked>
+                                                <label class="form-check-label small" for="n_jobs_auto">Авто (по числу
+                                                    GPU)</label>
+                                            </div>
+                                        </div>
+                                        <!-- Размер партии -->
+                                        <div class="col-md-4">
+                                            <label for="batch_size" class="form-label x-small">
+                                                <i class="bi bi-stack me-1"></i>Размер партии
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="batch_size"
+                                                       class="form-control form-control-sm"
+                                                       value="32" min="1" max="128">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="API токенизатора ограничен 30 запросами/мин. Увеличивайте размер партии, чтобы снизить число запросов.">
                                 <i class="bi bi-info-circle-fill"></i>
                         </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -296,7 +547,8 @@
 
                 <button id="stopBtn" type="button" class="btn btn-danger btn-sm no-drag" disabled>
                     <i class="bi bi-stop-fill"></i>
-                    <span id="stopSpinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span>
+                    <span id="stopSpinner" class="spinner-border spinner-border-sm ms-1 d-none"
+                          role="status"></span>
                 </button>
             </div>
 
@@ -314,21 +566,24 @@
                 <button id="lipsyncBtn" type="button"
                         class="btn btn-outline-secondary btn-sm no-drag w-100 d-flex justify-content-center align-items-center">
                     2. Выполнить lipsync
-                    <span id="lipsyncSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                    <span id="lipsyncSpinner" class="spinner-border spinner-border-sm ms-2 d-none"
+                          role="status"></span>
                 </button>
 
                 <!-- 3. Выровнять длину -->
                 <button id="alignBtn" type="button"
                         class="btn btn-outline-secondary btn-sm no-drag w-100 d-flex justify-content-center align-items-center">
                     3. Выровнять длину
-                    <span id="alignSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                    <span id="alignSpinner" class="spinner-border spinner-border-sm ms-2 d-none"
+                          role="status"></span>
                 </button>
 
                 <!-- 4. Свести закадр -->
                 <button id="mixingBtn" type="button"
                         class="btn btn-outline-secondary btn-sm no-drag w-100 d-flex justify-content-center align-items-center">
                     4. Свести закадр
-                    <span id="mixingSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                    <span id="mixingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"
+                          role="status"></span>
                 </button>
 
             </div>
