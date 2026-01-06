@@ -396,6 +396,7 @@ window.addEventListener('DOMContentLoaded', () => {
             prosody_cond:     Number(prosodyNumber.value),
             min_prosody_len:  Number(document.getElementById('min_prosody_len').value),
             max_extra_speed:  Number(document.getElementById('max_extra_speed').value),
+            cps_min:          Number(document.getElementById('cps_min').value),
             vc_type:          document.getElementById('vc_type').value,
             vc_default_alpha: Number((vcAlphaNumber?.value ?? '0.85')),
         };

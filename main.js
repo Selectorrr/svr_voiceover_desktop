@@ -155,6 +155,7 @@ async function runContainer(cfg) {
             pushArg(args, '--prosody_cond', cfg.prosody_cond);
             pushArg(args, '--min_prosody_len', cfg.min_prosody_len);
             pushArg(args, '--max_extra_speed', cfg.max_extra_speed);
+            pushArg(args, '--cps_min', cfg.cps_min);
             pushArg(args, '--vc_type', cfg.vc_type);
 
             // только для default конверсии

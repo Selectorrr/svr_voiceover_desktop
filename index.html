@@ -387,6 +387,20 @@
                                         </div>
 
                                         <div class="col-md-4">
+                                            <label for="cps_min" class="form-label x-small">Максимальный
+                                                темп для коротких реплик</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="cps_min"
+                                                       class="form-control form-control-sm"
+                                                       value="8.0" step="0.1" min="0">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Максимальное ускорение для коротких реплик (условные единицы/символы в сек).">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
                                             <label for="max_extra_speed" class="form-label x-small">Макс. доп.
                                                 ускорение</label>
                                             <div class="input-group input-group-sm">
@@ -405,7 +419,7 @@
                                             <div class="row g-2">
                                                 <div class="col-4">
                                                     <input type="number" id="dur_high_t0"
-                                                           class="form-control form-control-sm" value="1.0" step="0.1"
+                                                           class="form-control form-control-sm" value="0.7" step="0.1"
                                                            min="0" placeholder="t0">
                                                 </div>
                                                 <div class="col-4">
@@ -415,7 +429,7 @@
                                                 </div>
                                                 <div class="col-4">
                                                     <input type="number" id="dur_high_k"
-                                                           class="form-control form-control-sm" value="10.0" step="0.1"
+                                                           class="form-control form-control-sm" value="45.0" step="0.1"
                                                            min="0" placeholder="k">
                                                 </div>
                                             </div>
