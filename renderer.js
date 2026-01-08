@@ -42,6 +42,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const vcAlphaWrap    = document.getElementById('vc_default_alpha_wrap');
     const vcAlphaRange   = document.getElementById('vc_default_alpha_range');
     const vcAlphaNumber  = document.getElementById('vc_default_alpha');
+    const vcMinTargetNumber  = document.getElementById('min_target_sec');
 
     const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
 
@@ -137,10 +138,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // сохраняем основные поля
     const idsToPersist = [
-        'api_key','path_filter','ext','csv_delimiter','device','batch_size',
-        'tone_sample_len','is_respect_mos',
-        'dur_norm_low','dur_high_t0','dur_high_t1','dur_high_k','dur_norm_thr_low','dur_norm_thr_high',
-        'reinit_every','min_prosody_len','max_extra_speed','vc_type','vc_default_alpha'
+        'api_key','path_filter','ext','csv_delimiter','device','batch_size','tone_sample_len','is_respect_mos',
+        'reinit_every','min_prosody_len','speed_clip_max','speed_clip_min','speed_adjust_step_pct',
+        'speed_search_attempts','max_extra_speed','vc_type','vc_default_alpha', 'min_target_sec'
     ];
     idsToPersist.forEach(id => {
         const el = document.getElementById(id);
@@ -370,36 +370,35 @@ window.addEventListener('DOMContentLoaded', () => {
             ? ['CUDAExecutionProvider', 'CPUExecutionProvider']
             : ['CPUExecutionProvider'];
 
+
         const cfg = {
-            mode:            'synthesize',
-            api_key:         document.getElementById('api_key').value,
-            path_filter:     document.getElementById('path_filter').value,
-            ext:             document.getElementById('ext').value,
-            batch_size:      Number(document.getElementById('batch_size').value),
-            n_jobs:          (nJobsAuto && nJobsAuto.checked) ? null : Number(nJobsInput.value),
-            csv_delimiter:   document.getElementById('csv_delimiter').value,
-            workdir:         workdirInput.value || null,
+            mode: 'synthesize',
+            api_key: document.getElementById('api_key').value,
+            path_filter: document.getElementById('path_filter').value,
+            ext: document.getElementById('ext').value,
+            batch_size: Number(document.getElementById('batch_size').value),
+            n_jobs: (nJobsAuto && nJobsAuto.checked) ? null : Number(nJobsInput.value),
+            csv_delimiter: document.getElementById('csv_delimiter').value,
+            workdir: workdirInput.value || null,
             providers,
 
             // --- недостающие параметры entrypoint.py ---
             tone_sample_len: Number(document.getElementById('tone_sample_len').value),
-            is_respect_mos:  document.getElementById('is_respect_mos').checked,
+            is_respect_mos: document.getElementById('is_respect_mos').checked,
 
-            dur_norm_low:      Number(document.getElementById('dur_norm_low').value),
-            dur_high_t0:       Number(document.getElementById('dur_high_t0').value),
-            dur_high_t1:       Number(document.getElementById('dur_high_t1').value),
-            dur_high_k:        Number(document.getElementById('dur_high_k').value),
-            dur_norm_thr_low:  Number(document.getElementById('dur_norm_thr_low').value),
-            dur_norm_thr_high: Number(document.getElementById('dur_norm_thr_high').value),
-
-            reinit_every:     Number(document.getElementById('reinit_every').value),
-            prosody_cond:     Number(prosodyNumber.value),
-            min_prosody_len:  Number(document.getElementById('min_prosody_len').value),
-            max_extra_speed:  Number(document.getElementById('max_extra_speed').value),
-            cps_min:          Number(document.getElementById('cps_min').value),
-            vc_type:          document.getElementById('vc_type').value,
-            vc_default_alpha: Number((vcAlphaNumber?.value ?? '0.85')),
+            reinit_every: Number(document.getElementById('reinit_every').value),
+            prosody_cond: Number(prosodyNumber.value),
+            min_prosody_len: Number(document.getElementById('min_prosody_len').value),
+            speed_search_attempts: Number(document.getElementById('speed_search_attempts').value),
+            speed_adjust_step_pct: Number(document.getElementById('speed_adjust_step_pct').value),
+            speed_clip_min: Number(document.getElementById('speed_clip_min').value),
+            speed_clip_max: Number(document.getElementById('speed_clip_max').value),
+            max_extra_speed: Number(document.getElementById('max_extra_speed').value),
+            vc_type: document.getElementById('vc_type').value,
+            vc_default_alpha: Number((vcAlphaNumber?.value ?? '0.6')),
+            min_target_sec: Number((vcMinTargetNumber?.value ?? '3.0')),
         };
+        logsEl.textContent += e + '\n';
         window.api.runContainer(cfg);
     };
 

@@ -132,7 +132,7 @@ async function runContainer(cfg) {
                 '--ext', cfg.ext,
                 '--batch_size', String(cfg.batch_size),
                 '--csv_delimiter', cfg.csv_delimiter || ',',
-                '--path_filter', cfg.path_filter || ''
+                '--path_filter', cfg.path_filter || '',
             ];
 
             if (cfg.n_jobs)    args.push('--n_jobs', String(cfg.n_jobs));
@@ -143,24 +143,20 @@ async function runContainer(cfg) {
             else args.push('--is_respect_mos');
 
             pushArg(args, '--tone_sample_len', cfg.tone_sample_len);
-
-            pushArg(args, '--dur_norm_low', cfg.dur_norm_low);
-            pushArg(args, '--dur_high_t0', cfg.dur_high_t0);
-            pushArg(args, '--dur_high_t1', cfg.dur_high_t1);
-            pushArg(args, '--dur_high_k', cfg.dur_high_k);
-            pushArg(args, '--dur_norm_thr_low', cfg.dur_norm_thr_low);
-            pushArg(args, '--dur_norm_thr_high', cfg.dur_norm_thr_high);
-
             pushArg(args, '--reinit_every', cfg.reinit_every);
             pushArg(args, '--prosody_cond', cfg.prosody_cond);
             pushArg(args, '--min_prosody_len', cfg.min_prosody_len);
+            pushArg(args, '--speed_search_attempts', cfg.speed_search_attempts);
+            pushArg(args, '--speed_adjust_step_pct', cfg.speed_adjust_step_pct);
+            pushArg(args, '--speed_clip_min', cfg.speed_clip_min);
+            pushArg(args, '--speed_clip_max', cfg.speed_clip_max);
             pushArg(args, '--max_extra_speed', cfg.max_extra_speed);
-            pushArg(args, '--cps_min', cfg.cps_min);
             pushArg(args, '--vc_type', cfg.vc_type);
 
             // только для default конверсии
             if ((cfg.vc_type || '') === 'default') {
                 pushArg(args, '--vc_default_alpha', cfg.vc_default_alpha);
+                pushArg(args, '--min_target_sec', cfg.min_target_sec);
             }
 
             wc.send('container-log', `Аргументы entrypoint: ${args.join(' ')}`);

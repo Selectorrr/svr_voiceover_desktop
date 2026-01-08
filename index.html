@@ -270,17 +270,32 @@
                                             </div>
 
                                             <!-- только для vc_type=default -->
-                                            <div id="vc_default_alpha_wrap" class="mt-2">
-                                                <label class="form-label x-small mb-1">Просодия ↔ тембр (default)</label>
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <input type="range" id="vc_default_alpha_range" class="form-range" min="0"
-                                                           max="1" step="0.01" value="0.85" style="margin:0;">
-                                                    <input type="number" id="vc_default_alpha"
-                                                           class="form-control form-control-sm" value="0.85" min="0" max="1"
-                                                           step="0.01" style="width:90px;">
-                                                    <i class="bi bi-info-circle-fill info-trigger"
-                                                       data-info="Пропорция тембра к просодии для <b>default</b> конверсии. <br>0 — больше тембра, 1 — больше просодии."></i>
+                                            <div id="vc_default_alpha_wrap">
+                                                <div class="mt-2">
+                                                    <label class="form-label x-small mb-1">Просодия ↔ тембр (default)</label>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <input type="range" id="vc_default_alpha_range" class="form-range" min="0"
+                                                               max="1" step="0.01" value="0.6" style="margin:0;">
+                                                        <input type="number" id="vc_default_alpha"
+                                                               class="form-control form-control-sm" value="0.6" min="0" max="1"
+                                                               step="0.01" style="width:90px;">
+                                                        <i class="bi bi-info-circle-fill info-trigger"
+                                                           data-info="Пропорция тембра к просодии для <b>default</b> конверсии. <br>0 — больше тембра, 1 — больше просодии."></i>
+                                                    </div>
                                                 </div>
+                                                <div class="mt-2">
+                                                    <label for="min_target_sec" class="form-label x-small">Мин. длина семпла (сек.)</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" id="min_target_sec"
+                                                               class="form-control form-control-sm"
+                                                               value="3.0" step="0.1" min="0">
+                                                        <span class="input-group-text info-trigger"
+                                                              data-info="Если исходная просодия короче этого значения (сек), она будет дополнена тембром.">
+                                                <i class="bi bi-info-circle-fill"></i>
+                                            </span>
+                                                    </div>
+                                                </div>
+
                                             </div>
                                         </div>
 
@@ -303,7 +318,7 @@
                                             <div class="input-group input-group-sm">
                                                 <input type="number" id="min_prosody_len"
                                                        class="form-control form-control-sm"
-                                                       value="2.0" step="0.1" min="0">
+                                                       value="0" step="0.1" min="0">
                                                 <span class="input-group-text info-trigger"
                                                       data-info="Если исходная просодия короче этого значения (сек), она будет заменена на тембр.">
                                                 <i class="bi bi-info-circle-fill"></i>
@@ -358,48 +373,70 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Темп речи -->
+                        <!-- Подбор скорости -->
                         <div class="accordion-item">
-                            <h2 class="accordion-header" id="headingTempo">
-                                <button class="accordion-button accordion-button-sm collapsed" type="button"
-                                        data-bs-toggle="collapse" data-bs-target="#collapseTempo"
-                                        aria-expanded="false" aria-controls="collapseTempo">
-                                    <i class="bi bi-speedometer2 me-2"></i>Темп речи
+                            <h2 class="accordion-header" id="headingSpeed">
+                                <button class="accordion-button accordion-button-sm collapsed"
+                                        type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpeed"
+                                        aria-expanded="false" aria-controls="collapseSpeed">
+                                    <i class="bi bi-speedometer2 me-2"></i>Подбор скорости
                                 </button>
                             </h2>
-                            <div id="collapseTempo" class="accordion-collapse collapse"
-                                 aria-labelledby="headingTempo" data-bs-parent="#advancedAccordion">
+                            <div id="collapseSpeed" class="accordion-collapse collapse"
+                                 aria-labelledby="headingSpeed" data-bs-parent="#advancedAccordion">
                                 <div class="accordion-body">
                                     <div class="row g-3">
                                         <div class="col-md-4">
-                                            <label for="dur_norm_low" class="form-label x-small">Минимальный
-                                                темп</label>
+                                            <label for="speed_search_attempts" class="form-label x-small">Попытки подбора</label>
                                             <div class="input-group input-group-sm">
-                                                <input type="number" id="dur_norm_low"
+                                                <input type="number" id="speed_search_attempts"
                                                        class="form-control form-control-sm"
-                                                       value="5.0" step="0.1" min="0">
+                                                       value="6" min="0" step="1">
                                                 <span class="input-group-text info-trigger"
-                                                      data-info="Нижняя граница темпа речи (условные единицы/символы в сек).">
-                                                <i class="bi bi-info-circle-fill"></i>
-                                            </span>
+                                                      data-info="Сколько попыток уточнения скорости делать после первого прогона.">
+                                                    <i class="bi bi-info-circle"></i>
+                                                </span>
                                             </div>
                                         </div>
 
                                         <div class="col-md-4">
-                                            <label for="cps_min" class="form-label x-small">Максимальный
-                                                темп для коротких реплик</label>
+                                            <label for="speed_adjust_step_pct" class="form-label x-small">Шаг уточнения, %</label>
                                             <div class="input-group input-group-sm">
-                                                <input type="number" id="cps_min"
+                                                <input type="number" id="speed_adjust_step_pct"
                                                        class="form-control form-control-sm"
-                                                       value="8.0" step="0.1" min="0">
+                                                       value="0.08" min="0" step="0.01">
                                                 <span class="input-group-text info-trigger"
-                                                      data-info="Максимальное ускорение для коротких реплик (условные единицы/символы в сек).">
-                                                <i class="bi bi-info-circle-fill"></i>
-                                            </span>
+                                                      data-info="Y: на сколько менять скорость за одну попытку (0.08 = 8%).">
+                                                    <i class="bi bi-info-circle"></i>
+                                                </span>
                                             </div>
                                         </div>
 
+                                        <div class="col-md-4">
+                                            <label for="speed_clip_min" class="form-label x-small">Мин скорость</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="speed_clip_min"
+                                                       class="form-control form-control-sm"
+                                                       value="0.5" min="0" step="0.01">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Клиппинг: минимально допустимая скорость.">
+                                                    <i class="bi bi-info-circle"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label for="speed_clip_max" class="form-label x-small">Макс скорость</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="speed_clip_max"
+                                                       class="form-control form-control-sm"
+                                                       value="2.0" min="0" step="0.01">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Клиппинг: максимально допустимая скорость.">
+                                                    <i class="bi bi-info-circle"></i>
+                                                </span>
+                                            </div>
+                                        </div>
                                         <div class="col-md-4">
                                             <label for="max_extra_speed" class="form-label x-small">Макс. доп.
                                                 ускорение</label>
@@ -413,62 +450,10 @@
                                             </span>
                                             </div>
                                         </div>
-
-                                        <div class="col-md-4">
-                                            <label class="form-label x-small">Макс. темп (кривая)</label>
-                                            <div class="row g-2">
-                                                <div class="col-4">
-                                                    <input type="number" id="dur_high_t0"
-                                                           class="form-control form-control-sm" value="0.7" step="0.1"
-                                                           min="0" placeholder="t0">
-                                                </div>
-                                                <div class="col-4">
-                                                    <input type="number" id="dur_high_t1"
-                                                           class="form-control form-control-sm" value="15.0" step="0.1"
-                                                           min="0" placeholder="t1">
-                                                </div>
-                                                <div class="col-4">
-                                                    <input type="number" id="dur_high_k"
-                                                           class="form-control form-control-sm" value="45.0" step="0.1"
-                                                           min="0" placeholder="k">
-                                                </div>
-                                            </div>
-                                            <div class="form-text text-muted small">t0 / t1 (сек) и k (кривизна)</div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label for="dur_norm_thr_low" class="form-label x-small">Допуск
-                                                снизу</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="number" id="dur_norm_thr_low"
-                                                       class="form-control form-control-sm"
-                                                       value="0.5" step="0.1" min="0">
-                                                <span class="input-group-text info-trigger"
-                                                      data-info="Допустимое отклонение темпа речи от нижней границы.">
-                                                <i class="bi bi-info-circle-fill"></i>
-                                            </span>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label for="dur_norm_thr_high" class="form-label x-small">Допуск
-                                                сверху</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="number" id="dur_norm_thr_high"
-                                                       class="form-control form-control-sm"
-                                                       value="4.0" step="0.1" min="0">
-                                                <span class="input-group-text info-trigger"
-                                                      data-info="Допустимое отклонение темпа речи от верхней границы.">
-                                                <i class="bi bi-info-circle-fill"></i>
-                                            </span>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Техническое -->
                         <div class="accordion-item">
                             <h2 class="accordion-header" id="headingTech">
                                 <button class="accordion-button accordion-button-sm collapsed" type="button"
