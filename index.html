@@ -19,25 +19,60 @@
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css"/>
     <style>
+        :root {
+            --titlebar-h: 32px;
+        }
+
         html, body {
+            height: 100%;
             margin: 0;
             padding: 0;
+            overflow: hidden; /* скролл только внутри #content */
         }
 
         #titleBar {
-            position: sticky;
+            position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
             z-index: 1000;
-            -webkit-app-region: drag;
-            height: 32px;
+            height: var(--titlebar-h);
             width: 100%;
+            box-sizing: border-box;
             background-color: var(--bs-body-bg);
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 8px;
             border-bottom: 1px solid var(--bs-border-color);
+            -webkit-user-select: none;
+            user-select: none;
         }
+
+        /* Отдельный слой для drag.
+           На некоторых версиях Chromium/Electron перетаскивание может ломаться,
+           если "drag" висит прямо на sticky/fixed контейнере. */
+        #dragLayer {
+            position: absolute;
+            inset: 0;
+            -webkit-app-region: drag;
+            z-index: 0;
+        }
+
+        #titleBar > *:not(#dragLayer) {
+            position: relative;
+            z-index: 1;
+        }
+
+        #content {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: auto;
+        }
+
 
         #titleBar .no-drag,
         button, input, select, .form-control, .form-select, .input-group-text {
@@ -68,7 +103,7 @@
         }
 
         .container {
-            padding-top: 32px;
+            padding-top: 0;
         }
 
         #stopBtn:disabled, #runBtn:disabled {
@@ -87,6 +122,7 @@
 </head>
 <body class="bg-body text-body">
 <div id="titleBar">
+    <div id="dragLayer"></div>
     <div class="d-flex align-items-center">
         <i class="bi bi-mic-fill me-1"></i><span>SVR Voiceover Desktop</span>
     </div>
@@ -97,6 +133,7 @@
     </div>
 </div>
 
+<div id="content">
 <div class="container pt-4">
     <form id="run-form" class="row g-3 needs-validation" novalidate>
 
@@ -710,6 +747,8 @@
                  style="height:200px; overflow:auto; font-family:monospace; font-size:.85rem;"></pre>
         </div>
     </div>
+
+</div>
 
 </div>
 
