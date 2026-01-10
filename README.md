@@ -1,6 +1,7 @@
 # SVR Voiceover Desktop
 
-<img width="569" alt="Снимок экрана 2025-05-02 в 18 41 03" src="https://github.com/user-attachments/assets/67732ffa-a05c-48cd-b0ef-50685dadeab8" />
+
+<img width="573" height="731" alt="Снимок экрана 2026-01-10 в 10 59 01" src="https://github.com/user-attachments/assets/ac1ae386-64cc-4121-a194-247a084e561d" />
 
 Лёгкое кроссплатформенное GUI-приложение для запуска Docker-контейнера `selector/voiceover`. Помогает быстро сгенерировать озвучку по CSV без командной строки.
 
@@ -36,6 +37,7 @@
 
 ### Windows
 1. Скачайте инсталлятор `svr_voiceover_desktop Setup 1.0.0.exe` из релизов на GitHub
+
 2. Запустите его — приложение установится в `%LOCALAPPDATA%\Programs\svr_voiceover_desktop`
 3. Ярлык появится в меню «Пуск»
 
