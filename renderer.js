@@ -7,6 +7,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const stopSpinner    = document.getElementById('stopSpinner');
     const clearLogsBtn   = document.getElementById('clearLogsBtn');
     const copyLogsBtn    = document.getElementById('copyLogsBtn');
+    const logLimitEl     = document.getElementById('logLimit');
     const logsEl         = document.getElementById('logs');
     const progressInline = document.getElementById('progressInline');
     const progressBar    = progressInline.querySelector('.progress-bar');
@@ -229,7 +230,12 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     // Логи
-    clearLogsBtn.onclick = () => { logsEl.textContent = ''; };
+    clearLogsBtn.onclick = () => {
+        logBuffer = [];
+        pendingLines = [];
+        logRemainder = '';
+        logsEl.textContent = '';
+    };
     copyLogsBtn.onclick  = () => {
         navigator.clipboard.writeText(logsEl.textContent);
         showToast('Логи скопированы', 'success');
@@ -312,40 +318,111 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // IPC
     if (!window.api) return console.error('API не найдено');
-    window.api.onLog(line => {
-        logsEl.textContent += line + '\n';
-        logsEl.scrollTop = logsEl.scrollHeight;
+        // --- Логи: буфер на N строк, чтобы интерфейс не тормозил ---
+    const LOG_LIMIT_KEY = 'svr.logLimitLines';
+    let maxLogLines = 2000;
 
-        if (line.startsWith('❌')) {
-            endRun(); showToast(line,'danger');
+    try {
+        const saved = Number(localStorage.getItem(LOG_LIMIT_KEY));
+        if (Number.isFinite(saved) && saved > 0) maxLogLines = saved;
+    } catch (_e) {}
+
+    if (logLimitEl) {
+        logLimitEl.value = String(maxLogLines);
+        logLimitEl.addEventListener('change', () => {
+            const v = Number(logLimitEl.value) || 2000;
+            maxLogLines = Math.max(100, v);
+            try { localStorage.setItem(LOG_LIMIT_KEY, String(maxLogLines)); } catch (_e) {}
+            trimLogs();
+            renderLogs(true);
+        });
+    }
+
+    let logBuffer = [];
+    let pendingLines = [];
+    let flushScheduled = false;
+    let logRemainder = '';
+
+    function trimLogs() {
+        if (logBuffer.length > maxLogLines) {
+            logBuffer.splice(0, logBuffer.length - maxLogLines);
         }
-        if (line.includes('Контейнер остановлен и удалён.')) {
-            stopBtn.disabled=true; stopSpinner.classList.add('d-none');
-        }
+    }
 
-        // --- обновляем баланс символов ---
-        const m = line.match(/Доступно\s+(\d+)\s+символ/);
-        if (m) {
-            const available = Number(m[1]);
-            charCountEl.innerHTML = '&nbsp;' + available.toLocaleString('ru-RU');
-            // ВАЖНО: не выходим, но ниже при парсинге прогресса эту строку отфильтруем
-        }
+    function renderLogs(forceScroll=false) {
+        const atBottom = forceScroll || (logsEl.scrollTop + logsEl.clientHeight >= logsEl.scrollHeight - 10);
+        logsEl.textContent = logBuffer.length ? (logBuffer.join('\n') + '\n') : '';
+        if (atBottom) logsEl.scrollTop = logsEl.scrollHeight;
+    }
 
-        // --- прогресс: игнорируем строки "Доступно ... символа: XX%|..." ---
-        const pm = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
-        if (pm && !/Доступно\s+\d+\s+символ/.test(line)) {
-            const pct     = Number(pm[1]) || 0;
-            const elapsed = pm[2];
-            const eta     = pm[3];
-            const rate    = pm[4];
+    function scheduleFlush() {
+        if (flushScheduled) return;
+        flushScheduled = true;
 
-            progressBar.style.width = pct + '%';
-            progressInline.classList.remove('d-none');
-            progressLabel.classList.remove('d-none');
-            progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}`;
+        const flush = () => {
+            flushScheduled = false;
+            if (!pendingLines.length) return;
+            logBuffer.push(...pendingLines);
+            pendingLines = [];
+            trimLogs();
+            renderLogs(false);
+        };
+
+        (window.requestAnimationFrame || window.setTimeout)(flush, 0);
+    }
+
+    function addLogLine(line) {
+        pendingLines.push(line);
+        scheduleFlush();
+        handleLogLine(line);
+    }
+
+    function handleLogLine(line) {
+            if (line.startsWith('❌')) {
+                endRun(); showToast(line,'danger');
+            }
+            if (line.includes('Контейнер остановлен и удалён.')) {
+                stopBtn.disabled=true; stopSpinner.classList.add('d-none');
+            }
+
+            // --- обновляем баланс символов ---
+            const m = line.match(/Доступно\s+(\d+)\s+символ/);
+            if (m) {
+                const available = Number(m[1]);
+                charCountEl.innerHTML = '&nbsp;' + available.toLocaleString('ru-RU');
+                // ВАЖНО: не выходим, но ниже при парсинге прогресса эту строку отфильтруем
+            }
+
+            // --- прогресс: игнорируем строки "Доступно ... символа: XX%|..." ---
+            const pm = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
+            if (pm && !/Доступно\s+\d+\s+символ/.test(line)) {
+                const pct     = Number(pm[1]) || 0;
+                const elapsed = pm[2];
+                const eta     = pm[3];
+                const rate    = pm[4];
+
+                progressBar.style.width = pct + '%';
+                progressInline.classList.remove('d-none');
+                progressLabel.classList.remove('d-none');
+                progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}`;
+            }
+    }
+
+    window.api.onLog(chunk => {
+        // контейнер шлёт stdout/stderr кусками, собираем из них строки
+        if (typeof chunk !== 'string') chunk = String(chunk ?? '');
+        logRemainder += chunk;
+
+        const parts = logRemainder.split(/\r?\n/);
+        logRemainder = parts.pop() ?? '';
+
+        for (const raw of parts) {
+            addLogLine(raw.replace(/\r$/, ''));
         }
     });
     window.api.onDone(() => {
+        if (logRemainder) { addLogLine(logRemainder); logRemainder = ''; }
+        scheduleFlush();
         showToast('Готово','success');
         endRun();
         stopBtn.disabled = true;

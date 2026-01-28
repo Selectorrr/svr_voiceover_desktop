@@ -678,7 +678,16 @@
                 <i id="logsToggleIcon" class="bi bi-chevron-down me-1"></i>Логи
             </button>
             <div class="ms-auto">
-                <button id="clearLogsBtn" class="btn btn-outline-secondary btn-sm me-1">
+                
+                <select id="logLimit" class="form-select form-select-sm d-inline-block me-2" style="width:110px"
+                        title="Сколько строк логов держать на экране">
+                    <option value="500">500 строк</option>
+                    <option value="1000">1000 строк</option>
+                    <option value="2000">2000 строк</option>
+                    <option value="5000">5000 строк</option>
+                    <option value="10000">10000 строк</option>
+                </select>
+<button id="clearLogsBtn" class="btn btn-outline-secondary btn-sm me-1">
                     <i class="bi bi-trash"></i>
                 </button>
                 <button id="copyLogsBtn" class="btn btn-outline-secondary btn-sm">
