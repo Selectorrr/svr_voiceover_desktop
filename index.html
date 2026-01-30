@@ -108,6 +108,131 @@
         .accordion-body {
             padding: .75rem;
         }
+
+        /* --- Единая шкала длительности (центр = конец семпла) --- */
+        .gap-scale {
+            position: relative;
+            height: 28px;
+            width: 100%;
+        }
+
+        .gap-track {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 6px;
+            transform: translateY(-50%);
+            background: var(--bs-tertiary-bg);
+            border-radius: 999px;
+        }
+
+        .gap-fill-left,
+        .gap-fill-right {
+            position: absolute;
+            top: 50%;
+            height: 6px;
+            transform: translateY(-50%);
+            background: var(--bs-primary);
+            opacity: .55;
+            border-radius: 999px;
+        }
+
+        .gap-center {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 2px;
+            height: 16px;
+            transform: translate(-50%, -50%);
+            background: var(--bs-secondary-color);
+            border-radius: 2px;
+        }
+
+                .gap-range {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            height: 28px;
+            background: transparent;
+            -webkit-appearance: none;
+            appearance: none;
+            z-index: 2;
+            /*
+              ДВА range лежат друг на друге.
+              Чтобы они не перекрывали клики по всей ширине, отключаем pointer-events
+              у самого инпута и включаем только у "ползунка" (thumb).
+              Тогда можно нормально таскать и левый, и правый.
+            */
+            pointer-events: none;
+        }
+
+        /*
+          Делаем два независимых ползунка:
+          - левый управляет ТОЛЬКО левой половиной (от центра до левого края)
+          - правый управляет ТОЛЬКО правой половиной (от центра до правого края)
+          Так визуально и по мышке всё становится предсказуемо.
+        */
+        .gap-range.gap-left  {
+            left: 0;
+            right: auto;
+            width: 50%;
+            /* 0% = у центра, 50% = у левого края */
+            direction: rtl;
+            z-index: 3;
+        }
+        .gap-range.gap-right {
+            left: 50%;
+            right: 0;
+            width: 50%;
+            z-index: 4;
+        }
+        .gap-range:focus { outline: none; }
+
+        .gap-range::-webkit-slider-runnable-track {
+            background: transparent;
+            height: 6px;
+        }
+
+        .gap-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--bs-primary);
+            background: var(--bs-body-bg);
+            margin-top: -4px;
+            pointer-events: auto;
+        }
+
+        .gap-range::-moz-range-track {
+            background: transparent;
+            height: 6px;
+        }
+
+        .gap-range::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--bs-primary);
+            background: var(--bs-body-bg);
+            pointer-events: auto;
+        }
+
+    .gap-atempo-marker{
+        position:absolute;
+        top:6px;
+        bottom:6px;
+        width:2px;
+        background:rgba(255,255,255,0.45);
+        pointer-events:none;
+        border-radius:2px;
+    }
+    
 </style>
 </head>
 <body class="bg-body text-body">
@@ -514,8 +639,98 @@
                                             </span>
                                             </div>
                                         </div>
-                                    </div>
+
+                                        <!-- Допуски по длине результата (зависят от длины реплики) -->
+                                        <div class="col-12"></div>
+
+                                        <div class="col-md-4">
+                                            <label for="len_t_short" class="form-label x-small">Короткая реплика, сек</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="len_t_short"
+                                                       class="form-control form-control-sm"
+                                                       value="1.0" min="0" step="0.1">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Если реплика короче этого (в секундах) — считаем её короткой.">
+                                                    <i class="bi bi-info-circle-fill"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label for="len_t_long" class="form-label x-small">Длинная реплика, сек</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="len_t_long"
+                                                       class="form-control form-control-sm"
+                                                       value="15.0" min="0" step="0.5">
+                                                <span class="input-group-text info-trigger"
+                                                      data-info="Если реплика длиннее этого (в секундах) — считаем её длинной.">
+                                                    <i class="bi bi-info-circle-fill"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                                                                <!-- Шкалы допусков: центр = конец семпла, края = допустимый зазор -->
+                                        <div class="col-12">
+                                            <label class="form-label x-small mb-1">Допуски по длине (относительно семпла)</label>
+
+                                            <div class="small text-muted mb-1">Максимум сейчас: <span id="gapCapLeftLabel">-50%</span> / <span id="gapCapRightLabel">+50%</span></div>
+
+                                            <!-- Короткие -->
+                                            <div class="mb-2">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div class="x-small text-muted">Короткие реплики</div>
+                                                    <div class="d-flex gap-2 x-small">
+                                                        <span id="gapLeftLabelShort">-15%</span>
+                                                        <span id="gapRightLabelShort">+15%</span>
+                                                    </div>
+                                                </div>
+                                                <div class="gap-scale" id="gapScaleShort">
+                                                    <div class="gap-track"></div>
+                                                    <div class="gap-fill-left" id="gapFillLeftShort" style="left:50%; width:0;"></div>
+                                                    <div class="gap-fill-right" id="gapFillRightShort" style="left:50%; width:0;"></div>
+                            <div class="gap-atempo-marker" id="gapAtempoShort"></div>
+                                                    <div class="gap-center"></div>
+                                                    <!-- левый ползунок = насколько можно короче -->
+                                                    <input type="range" id="gap_left_short" class="gap-range gap-left" min="0" max="50" step="1" value="15"
+                                                           aria-label="Короткие: можно короче, %">
+                                                    <!-- правый ползунок = насколько можно длиннее -->
+                                                    <input type="range" id="gap_right_short" class="gap-range gap-right" min="0" max="50" step="1" value="15"
+                                                           aria-label="Короткие: можно длиннее, %">
+                                                </div>
+                                            </div>
+
+                                            <!-- Длинные -->
+                                            <div>
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div class="x-small text-muted">Длинные реплики</div>
+                                                    <div class="d-flex gap-2 x-small">
+                                                        <span id="gapLeftLabelLong">-5%</span>
+                                                        <span id="gapRightLabelLong">+5%</span>
+                                                    </div>
+                                                </div>
+                                                <div class="gap-scale" id="gapScaleLong">
+                                                    <div class="gap-track"></div>
+                                                    <div class="gap-fill-left" id="gapFillLeftLong" style="left:50%; width:0;"></div>
+                                                    <div class="gap-fill-right" id="gapFillRightLong" style="left:50%; width:0;"></div>
+                            <div class="gap-atempo-marker" id="gapAtempoLong"></div>
+                                                    <div class="gap-center"></div>
+                                                    <input type="range" id="gap_left_long" class="gap-range gap-left" min="0" max="50" step="1" value="5"
+                                                           aria-label="Длинные: можно короче, %">
+                                                    <input type="range" id="gap_right_long" class="gap-range gap-right" min="0" max="50" step="1" value="5"
+                                                           aria-label="Длинные: можно длиннее, %">
+                                                </div>
+                                            </div>
+                                            <div class="small text-muted mt-1">Левый ползунок — насколько можно короче, правый — насколько можно длиннее.</div>
+                                        <!-- значения для конфигурации (скрыты, управляются шкалой) -->
+                                        <input type="hidden" id="max_longer_pct_short" value="0.15">
+                                        <input type="hidden" id="max_longer_pct_long" value="0.05">
+                                        <input type="hidden" id="max_shorter_pct_short" value="0.15">
+                                        <input type="hidden" id="max_shorter_pct_long" value="0.05">
+
+                                        </div>
+
                                 </div>
+                            </div>
                             </div>
                         </div>
                         <div class="accordion-item">
@@ -640,26 +855,18 @@
                     <span id="runSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
                 </button>
 
-                <!-- 2. Lipsync -->
-                <button id="lipsyncBtn" type="button"
-                        class="btn btn-outline-secondary btn-sm no-drag w-100 d-flex justify-content-center align-items-center">
-                    2. Выполнить lipsync
-                    <span id="lipsyncSpinner" class="spinner-border spinner-border-sm ms-2 d-none"
-                          role="status"></span>
-                </button>
-
-                <!-- 3. Выровнять длину -->
+                <!-- 2. Выровнять длину -->
                 <button id="alignBtn" type="button"
                         class="btn btn-outline-secondary btn-sm no-drag w-100 d-flex justify-content-center align-items-center">
-                    3. Выровнять длину
+                    2. Выровнять длину
                     <span id="alignSpinner" class="spinner-border spinner-border-sm ms-2 d-none"
                           role="status"></span>
                 </button>
 
-                <!-- 4. Свести закадр -->
+                <!-- 3. Свести закадр -->
                 <button id="mixingBtn" type="button"
                         class="btn btn-outline-secondary btn-sm no-drag w-100 d-flex justify-content-center align-items-center">
-                    4. Свести закадр
+                    3. Свести закадр
                     <span id="mixingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"
                           role="status"></span>
                 </button>

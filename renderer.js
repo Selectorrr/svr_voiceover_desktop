@@ -25,10 +25,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const populateSampleBtn  = document.getElementById('populateSampleBtn');
     const openDirBtn        = document.getElementById('openDirBtn');
     const charCountEl = document.getElementById('charCount');
-    const lipsyncBtn    = document.getElementById('lipsyncBtn');
     const alignBtn      = document.getElementById('alignBtn');
     const mixingBtn     = document.getElementById('mixingBtn');
-    const lipsyncSpinner = document.getElementById('lipsyncSpinner');
     const alignSpinner   = document.getElementById('alignSpinner');
     const mixingSpinner  = document.getElementById('mixingSpinner');
 
@@ -45,7 +43,32 @@ window.addEventListener('DOMContentLoaded', () => {
     const vcAlphaNumber  = document.getElementById('vc_default_alpha');
     const vcMinTargetNumber  = document.getElementById('min_target_sec');
 
-    const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
+    // Шкалы допусков по длине (центр = конец семпла)
+    // Короткие
+    const gapLeftShort       = document.getElementById('gap_left_short');   // насколько можно короче
+    const gapRightShort      = document.getElementById('gap_right_short');  // насколько можно длиннее
+    const gapFillLeftShort   = document.getElementById('gapFillLeftShort');
+    const gapFillRightShort  = document.getElementById('gapFillRightShort');
+    const gapAtempoShort     = document.getElementById('gapAtempoShort');
+    const gapLeftLabelShort  = document.getElementById('gapLeftLabelShort');
+    const gapRightLabelShort = document.getElementById('gapRightLabelShort');
+
+    // Длинные
+    const gapLeftLong       = document.getElementById('gap_left_long');
+    const gapRightLong      = document.getElementById('gap_right_long');
+    const gapFillLeftLong   = document.getElementById('gapFillLeftLong');
+    const gapFillRightLong  = document.getElementById('gapFillRightLong');
+    const gapAtempoLong      = document.getElementById('gapAtempoLong');
+    const gapLeftLabelLong  = document.getElementById('gapLeftLabelLong');
+    const gapRightLabelLong = document.getElementById('gapRightLabelLong');
+
+    // Подписи с текущими “потолками” шкалы (зависят от мин/макс скорости)
+    // - левый потолок: насколько вообще можно быть короче
+    // - правый потолок: насколько вообще можно быть длиннее
+    const gapCapLeftLabel  = document.getElementById('gapCapLeftLabel');
+    const gapCapRightLabel = document.getElementById('gapCapRightLabel');
+
+const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
 
     function safeParseJson(s) {
         try { return JSON.parse(s); } catch { return null; }
@@ -141,7 +164,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const idsToPersist = [
         'api_key','path_filter','ext','csv_delimiter','device','batch_size','tone_sample_len','is_respect_mos',
         'reinit_every','min_prosody_len','speed_clip_max','speed_clip_min','speed_adjust_step_pct',
-        'speed_search_attempts','max_extra_speed','vc_type','vc_default_alpha', 'min_target_sec'
+        'speed_search_attempts','max_extra_speed',
+        // допуски по длине результата
+        'len_t_short','len_t_long','max_longer_pct_short','max_longer_pct_long','max_shorter_pct_short','max_shorter_pct_long',
+        'vc_type','vc_default_alpha', 'min_target_sec'
     ];
     idsToPersist.forEach(id => {
         const el = document.getElementById(id);
@@ -164,7 +190,235 @@ window.addEventListener('DOMContentLoaded', () => {
         return out;
     }
 
-    logsCollapse.addEventListener('show.bs.collapse', () => {
+    // ---------- Единая шкала допусков ----------
+    function fmtFrac(x) {
+        // 0.05 / 0.15 и т.п. без лишних нулей
+        const n = Number(x);
+        if (!Number.isFinite(n)) return '0';
+        const s = n.toFixed(3);
+        return s.replace(/\.?0+$/, '');
+    }
+
+    
+    // --- Шкалы допусков по длине (в процентах) ---
+    // Здесь проценты вводятся в долях: 0.15 = 15%.
+    // На шкале показываем целые проценты (например 15 = 15%).
+
+
+    // --- Шкалы допусков по длине (в процентах) ---
+    // В конфиге доли: 0.15 = 15%.
+    // В UI показываем проценты целым числом.
+    //
+    // Диапазон шкал автоматически подстраивается под "Мин. скорость" и "Макс. скорость":
+    // - Чем выше "Макс. скорость", тем больше можно сделать короче (левый ползунок).
+    // - Чем ниже "Мин. скорость", тем больше можно сделать длиннее (правый ползунок).
+
+    function _num(id, defVal) {
+        // Пользователи часто вводят числа с запятой (например 0,8).
+        // Number('0,8') -> NaN, поэтому приводим запятую к точке.
+        const raw = document.getElementById(id)?.value;
+        const v = Number(String(raw ?? '').trim().replace(',', '.'));
+        return Number.isFinite(v) ? v : defVal;
+    }
+
+    function getGapCapsPctInt() {
+        const sMin = _num('speed_clip_min', 0.5); // медленнее => длиннее
+        const sMax = _num('speed_clip_max', 2.0); // быстрее  => короче
+
+        // Сколько максимум можно "длиннее" / "короче" в процентах, если смотреть только на пределы скорости.
+        // Длительность примерно обратно пропорциональна speed.
+        // - Для "длиннее": замедление до sMin даёт увеличение длительности примерно (1/sMin - 1)
+        // - Для "короче": ускорение до sMax даёт уменьшение длительности примерно (1 - 1/sMax)
+        let capLonger  = (sMin > 0) ? (1.0 / sMin - 1.0) : 0.0;     // доля
+        let capShorter = (sMax > 0) ? (1.0 - 1.0 / sMax) : 0.0;     // доля
+
+        // В проценты, с ограничением 0..50
+        let capRight = Math.round(capLonger * 100);
+        let capLeft  = Math.round(capShorter * 100);
+
+        if (!Number.isFinite(capRight)) capRight = 0;
+        if (!Number.isFinite(capLeft))  capLeft  = 0;
+        capRight = Math.max(0, capRight);
+        capLeft  = Math.max(0, capLeft);
+
+        return { capLeft, capRight };
+    }
+
+    function clampInt(v, lo, hi) {
+        v = Number(v) || 0;
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    function fmtPctLabel(v, sign) {
+        const n = clampInt(v, 0, 999);
+        return `${sign}${n}%`;
+    }
+
+    function pctIntFromInput(id, cap) {
+        const el = document.getElementById(id);
+        const v = Number(String(el?.value ?? 0).trim().replace(',', '.')); // 0.15
+        const pct = Math.round(v * 100);                  // 15
+        return clampInt(pct, 0, cap);
+    }
+
+    function setInputFromPctInt(id, pctInt) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = fmtFrac((Number(pctInt) || 0) / 100);
+    }
+
+    function updateGapUi(kind, leftPctInt, rightPctInt, capLeft, capRight) {
+        // kind: 'short' | 'long'
+        const isShort = kind === 'short';
+
+        const leftLabel  = isShort ? gapLeftLabelShort  : gapLeftLabelLong;
+        const rightLabel = isShort ? gapRightLabelShort : gapRightLabelLong;
+        const fillLeft   = isShort ? gapFillLeftShort   : gapFillLeftLong;
+        const fillRight  = isShort ? gapFillRightShort  : gapFillRightLong;
+
+        if (leftLabel)  leftLabel.textContent  = fmtPctLabel(leftPctInt,  '-');
+        if (rightLabel) rightLabel.textContent = fmtPctLabel(rightPctInt, '+');
+
+        // Заливка вокруг центра:
+        // левая/правая половины — это 50% ширины каждая.
+        const leftW  = (capLeft  > 0) ? (leftPctInt  / capLeft)  * 50 : 0;   // 0..50
+        const rightW = (capRight > 0) ? (rightPctInt / capRight) * 50 : 0;   // 0..50
+
+        if (fillLeft) {
+            fillLeft.style.left = `${50 - leftW}%`;
+            fillLeft.style.width = `${leftW}%`;
+        }
+        if (fillRight) {
+            fillRight.style.left = `50%`;
+            fillRight.style.width = `${rightW}%`;
+        }
+
+        // Маркер “макс. доп. ускорение”:
+        // показывает точку, которая находится левее правого ползунка на max_extra_speed%.
+        // Это визуальная подсказка: если результат оказался ближе к правому краю, часть можно "дожать" ускорением.
+        const extraPctInt = Math.max(0, Math.round(_num('max_extra_speed', 0.0) * 100));
+        const markerPctInt = Math.max(0, rightPctInt - extraPctInt);
+        const markerX = 50 + ((capRight > 0) ? (markerPctInt / capRight) * 50 : 0);
+
+        const atempoMarker = isShort ? gapAtempoShort : gapAtempoLong;
+        if (atempoMarker) {
+            atempoMarker.style.left = `${markerX}%`;
+            atempoMarker.style.display = (rightPctInt > 0 && extraPctInt > 0) ? 'block' : 'none';
+        }
+    }
+
+    function setSliderCaps({capLeft, capRight}) {
+        // max для левых/правых ползунков
+        [gapLeftShort, gapLeftLong].forEach(el => { if (el) el.max = String(capLeft); });
+        [gapRightShort, gapRightLong].forEach(el => { if (el) el.max = String(capRight); });
+
+        // показываем пользователю текущие максимальные границы шкалы
+        if (gapCapLeftLabel)  gapCapLeftLabel.textContent  = `-${capLeft}%`;
+        if (gapCapRightLabel) gapCapRightLabel.textContent = `+${capRight}%`;
+    }
+
+    function applyInputsToSliders() {
+        const { capLeft, capRight } = getGapCapsPctInt();
+        setSliderCaps({capLeft, capRight});
+
+        // Короткие
+        const shortLeft  = pctIntFromInput('max_shorter_pct_short', capLeft);
+        const shortRight = pctIntFromInput('max_longer_pct_short', capRight);
+        if (gapLeftShort)  gapLeftShort.value  = String(shortLeft);
+        if (gapRightShort) gapRightShort.value = String(shortRight);
+        updateGapUi('short', shortLeft, shortRight, capLeft, capRight);
+
+        // Длинные
+        const longLeft  = pctIntFromInput('max_shorter_pct_long', capLeft);
+        const longRight = pctIntFromInput('max_longer_pct_long', capRight);
+        if (gapLeftLong)  gapLeftLong.value  = String(longLeft);
+        if (gapRightLong) gapRightLong.value = String(longRight);
+        updateGapUi('long', longLeft, longRight, capLeft, capRight);
+    }
+
+    function applySlidersToInputs(kind) {
+        const { capLeft, capRight } = getGapCapsPctInt();
+        setSliderCaps({capLeft, capRight});
+
+        const isShort = kind === 'short';
+
+        const leftSlider  = isShort ? gapLeftShort  : gapLeftLong;
+        const rightSlider = isShort ? gapRightShort : gapRightLong;
+
+        const leftPctInt  = clampInt(leftSlider?.value,  0, capLeft);
+        const rightPctInt = clampInt(rightSlider?.value, 0, capRight);
+
+        if (isShort) {
+            setInputFromPctInt('max_shorter_pct_short', leftPctInt);
+            setInputFromPctInt('max_longer_pct_short', rightPctInt);
+        } else {
+            setInputFromPctInt('max_shorter_pct_long', leftPctInt);
+            setInputFromPctInt('max_longer_pct_long', rightPctInt);
+        }
+
+        updateGapUi(kind, leftPctInt, rightPctInt, capLeft, capRight);
+    }
+
+    // Если пользователь поменял min/max speed — диапазон шкал меняется.
+    // Подстраиваем max у ползунков и поджимаем текущие значения, если они выходят за новые границы.
+    function onSpeedClipChanged() {
+        const { capLeft, capRight } = getGapCapsPctInt();
+        setSliderCaps({capLeft, capRight});
+
+        // поджимаем скрытые значения-конфиги, если стали больше капа
+        const curShorterShort = pctIntFromInput('max_shorter_pct_short', capLeft);
+        const curShorterLong  = pctIntFromInput('max_shorter_pct_long',  capLeft);
+        const curLongerShort  = pctIntFromInput('max_longer_pct_short',  capRight);
+        const curLongerLong   = pctIntFromInput('max_longer_pct_long',   capRight);
+
+        setInputFromPctInt('max_shorter_pct_short', curShorterShort);
+        setInputFromPctInt('max_shorter_pct_long',  curShorterLong);
+        setInputFromPctInt('max_longer_pct_short',  curLongerShort);
+        setInputFromPctInt('max_longer_pct_long',   curLongerLong);
+
+        // и обновляем сами шкалы
+        applyInputsToSliders();
+        saveSettings();
+    }
+
+    // Инициализация и синхронизация шкал
+    applyInputsToSliders();
+
+    // На изменение min/max скорости пересчитываем границы шкалы
+    const speedMinEl = document.getElementById('speed_clip_min');
+    const speedMaxEl = document.getElementById('speed_clip_max');
+    // В разных вариантах ввода (стрелки, колесо, ручной ввод) события могут отличаться,
+    // поэтому слушаем и input, и change.
+    speedMinEl?.addEventListener('input', onSpeedClipChanged);
+    speedMinEl?.addEventListener('change', onSpeedClipChanged);
+    speedMaxEl?.addEventListener('input', onSpeedClipChanged);
+    speedMaxEl?.addEventListener('change', onSpeedClipChanged);
+
+    // При нажатии поднимаем активный ползунок выше второго (чтобы хваталось предсказуемо)
+    function bringToFront(el, other) {
+        if (!el || !other) return;
+        el.style.zIndex = '6';
+        other.style.zIndex = '5';
+    }
+
+    gapLeftShort?.addEventListener('pointerdown', () => bringToFront(gapLeftShort, gapRightShort));
+    gapRightShort?.addEventListener('pointerdown', () => bringToFront(gapRightShort, gapLeftShort));
+    gapLeftLong?.addEventListener('pointerdown', () => bringToFront(gapLeftLong, gapRightLong));
+    gapRightLong?.addEventListener('pointerdown', () => bringToFront(gapRightLong, gapLeftLong));
+
+    gapLeftShort?.addEventListener('input', () => { applySlidersToInputs('short'); saveSettings(); });
+    gapRightShort?.addEventListener('input', () => { applySlidersToInputs('short'); saveSettings(); });
+
+    gapLeftLong?.addEventListener('input', () => { applySlidersToInputs('long'); saveSettings(); });
+    gapRightLong?.addEventListener('input', () => { applySlidersToInputs('long'); saveSettings(); });
+
+    // если значения поменялись “снаружи” (из настроек) — обновляем шкалы
+    ['max_longer_pct_short','max_shorter_pct_short','max_longer_pct_long','max_shorter_pct_long']
+        .forEach(id => document.getElementById(id)?.addEventListener('input', () => {
+            applyInputsToSliders();
+        }));
+
+logsCollapse.addEventListener('show.bs.collapse', () => {
         logsToggleIcon.classList.replace('bi-chevron-down', 'bi-chevron-up');
     });
     logsCollapse.addEventListener('hide.bs.collapse', () => {
@@ -263,13 +517,11 @@ window.addEventListener('DOMContentLoaded', () => {
     function startRun(mode){
         // выключаем все кнопки
         runBtn.disabled     = true;
-        lipsyncBtn.disabled = true;
         alignBtn.disabled   = true;
         mixingBtn.disabled  = true;
 
         // скрываем все спиннеры
         runSpinner.classList.add('d-none');
-        lipsyncSpinner.classList.add('d-none');
         alignSpinner.classList.add('d-none');
         mixingSpinner.classList.add('d-none');
 
@@ -282,8 +534,6 @@ window.addEventListener('DOMContentLoaded', () => {
         // показываем спиннер только для активного режима
         if (mode === 'synthesize') {
             runSpinner.classList.remove('d-none');
-        } else if (mode === 'lipsync') {
-            lipsyncSpinner.classList.remove('d-none');
         } else if (mode === 'align') {
             alignSpinner.classList.remove('d-none');
         } else if (mode === 'mixing') {
@@ -296,12 +546,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
     function endRun(){
         runBtn.disabled     = false;
-        lipsyncBtn.disabled = false;
         alignBtn.disabled   = false;
         mixingBtn.disabled  = false;
 
         runSpinner.classList.add('d-none');
-        lipsyncSpinner.classList.add('d-none');
         alignSpinner.classList.add('d-none');
         mixingSpinner.classList.add('d-none');
 
@@ -471,6 +719,15 @@ window.addEventListener('DOMContentLoaded', () => {
             speed_clip_min: Number(document.getElementById('speed_clip_min').value),
             speed_clip_max: Number(document.getElementById('speed_clip_max').value),
             max_extra_speed: Number(document.getElementById('max_extra_speed').value),
+
+            // допуски по длине результата (зависят от длины реплики)
+            len_t_short: Number(document.getElementById('len_t_short').value),
+            len_t_long: Number(document.getElementById('len_t_long').value),
+            max_longer_pct_short: Number(document.getElementById('max_longer_pct_short').value),
+            max_longer_pct_long: Number(document.getElementById('max_longer_pct_long').value),
+            max_shorter_pct_short: Number(document.getElementById('max_shorter_pct_short').value),
+            max_shorter_pct_long: Number(document.getElementById('max_shorter_pct_long').value),
+
             vc_type: document.getElementById('vc_type').value,
             vc_default_alpha: Number((vcAlphaNumber?.value ?? '0.6')),
             min_target_sec: Number((vcMinTargetNumber?.value ?? '3.0')),
@@ -497,20 +754,9 @@ window.addEventListener('DOMContentLoaded', () => {
             workdir:       workdirInput.value || null,
             csv_delimiter: document.getElementById('csv_delimiter').value,
             providers,
-            // api_key тут не нужен, скрипты lipsync/align/mixing его не используют
+            // api_key тут не нужен, скрипты align/mixing его не используют
         };
     }
-
-    lipsyncBtn.onclick = () => {
-        if (!ensureWorkdirOrToast()) return;
-        logsEl.textContent = '';
-        startRun('lipsync');
-        const cfg = {
-            ...buildBaseCfg(),
-            mode: 'lipsync',
-        };
-        window.api.runContainer(cfg);
-    };
 
     alignBtn.onclick = () => {
         if (!ensureWorkdirOrToast()) return;

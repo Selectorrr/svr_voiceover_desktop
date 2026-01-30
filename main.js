@@ -151,6 +151,14 @@ async function runContainer(cfg) {
             pushArg(args, '--speed_clip_min', cfg.speed_clip_min);
             pushArg(args, '--speed_clip_max', cfg.speed_clip_max);
             pushArg(args, '--max_extra_speed', cfg.max_extra_speed);
+
+            // Допуски по длине результата (зависят от длины реплики)
+            pushArg(args, '--len_t_short', cfg.len_t_short);
+            pushArg(args, '--len_t_long', cfg.len_t_long);
+            pushArg(args, '--max_longer_pct_short', cfg.max_longer_pct_short);
+            pushArg(args, '--max_longer_pct_long', cfg.max_longer_pct_long);
+            pushArg(args, '--max_shorter_pct_short', cfg.max_shorter_pct_short);
+            pushArg(args, '--max_shorter_pct_long', cfg.max_shorter_pct_long);
             pushArg(args, '--vc_type', cfg.vc_type);
 
             wc.send('container-log', `Аргументы entrypoint: ${args.join(' ')}`);
