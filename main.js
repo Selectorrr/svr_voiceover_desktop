@@ -196,8 +196,11 @@ async function runContainer(cfg) {
         const raw = await container.attach({ stream: true, stdout: true, stderr: true });
         const out = new PassThrough(), errStream = new PassThrough();
         docker.modem.demuxStream(raw, out, errStream);
-        out.on('data', chunk => wc.send('container-log', chunk.toString()));
-        errStream.on('data', chunk => wc.send('container-log', chunk.toString()));
+        const norm = (b) => b.toString('utf8').replace(/\r/g, '\n');
+
+        out.on('data', chunk => wc.send('container-log', norm(chunk)));
+        errStream.on('data', chunk => wc.send('container-log', norm(chunk)));
+
 
         await container.start();
         wc.send('container-log', 'Контейнер запущен');
