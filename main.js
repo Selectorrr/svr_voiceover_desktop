@@ -17,6 +17,7 @@ const docker = new Docker();
 
 let mainWindow;
 let currentContainerId = null; // хранит ID активного контейнера
+let currentRunToken = null;    // токен активного запуска (передаём из renderer)
 
 function createWindow() {
     let iconName;
@@ -54,13 +55,13 @@ function createWindow() {
             container.stop().catch(()=>{});
             container.remove().catch(()=>{});
             currentContainerId = null;
+            currentRunToken = null;
         }
     });
 }
 
-async function pullImage(image) {
-    const wc = mainWindow.webContents;
-    wc.send('container-log', `Образ "${image}" не найден. Скачиваем…`);
+async function pullImage(image, sendLog) {
+    sendLog(`Образ "${image}" не найден. Скачиваем…`);
     const bar = new ProgressBar({
         text: `Загрузка ${image}`,
         detail: 'Подготовка…',
@@ -72,11 +73,11 @@ async function pullImage(image) {
             stream,
             err => {
                 if (err) {
-                    wc.send('container-log', `❌ Ошибка скачивания: ${err.message}`);
+                    sendLog(`❌ Ошибка скачивания: ${err.message}`);
                     return reject(err);
                 }
                 bar.setCompleted();
-                wc.send('container-log', `Образ "${image}" загружен.`);
+                sendLog(`Образ "${image}" загружен.`);
                 resolve();
             },
             evt => {
@@ -93,13 +94,23 @@ async function runContainer(cfg) {
     const wc = mainWindow.webContents;
     const mode = cfg.mode || 'synthesize';
 
-    wc.send('container-log', `Режим: ${mode}`);
-    wc.send('container-log', `Получена конфигурация: ${JSON.stringify(cfg)}`);
+    // токен запуска приходит из renderer; нужен, чтобы игнорировать "поздние" done/log от прошлого запуска
+    const runToken = cfg?._runToken ?? null;
+
+    const sendLog = (line) => wc.send('container-log', { runToken, line: String(line ?? '') });
+    const sendDone = (reason, extra = {}) => wc.send('container-done', { runToken, reason, ...extra });
+
+    // помечаем текущий запуск
+    currentRunToken = runToken;
+
+    sendLog(`Режим: ${mode}`);
+    sendLog(`Получена конфигурация: ${JSON.stringify(cfg)}`);
 
     const image = 'selector/voiceover:latest';
+    let localContainerId = null;
     try {
         const imgs = await docker.listImages({ filters: { reference: [image] } });
-        if (!imgs.length) await pullImage(image);
+        if (!imgs.length) await pullImage(image, sendLog);
 
         const hostConfig = { AutoRemove: true };
         if (cfg.workdir) {
@@ -113,7 +124,7 @@ async function runContainer(cfg) {
                 Count: -1,
                 Capabilities: [['gpu']],
             }];
-            wc.send('container-log', 'Используем все доступные GPU (--gpus all)');
+            sendLog('Используем все доступные GPU (--gpus all)');
         }
 
         let createOptions = { Image: image, HostConfig: hostConfig };
@@ -161,18 +172,18 @@ async function runContainer(cfg) {
             pushArg(args, '--max_shorter_pct_long', cfg.max_shorter_pct_long);
             pushArg(args, '--vc_type', cfg.vc_type);
 
-            wc.send('container-log', `Аргументы entrypoint: ${args.join(' ')}`);
+            sendLog(`Аргументы entrypoint: ${args.join(' ')}`);
 
             // для основной озвучки не трогаем Entrypoint — используем тот, что в образе
             createOptions.Cmd = args;
 
         } else if (mode === 'lipsync') {
-            wc.send('container-log', 'Запуск lipsync.py');
+            sendLog('Запуск lipsync.py');
             createOptions.Entrypoint = ['python', 'lipsync.py'];
             createOptions.Cmd = [];
 
         } else if (mode === 'align') {
-            wc.send('container-log', 'Запуск align.py');
+            sendLog('Запуск align.py');
             const cmd = [];
             if (cfg.align_use_voice_len) {
                 cmd.push('--use-voice-len');
@@ -181,7 +192,7 @@ async function runContainer(cfg) {
             createOptions.Cmd = cmd;
 
         } else if (mode === 'mixing') {
-            wc.send('container-log', 'Запуск mixing.py');
+            sendLog('Запуск mixing.py');
             createOptions.Entrypoint = ['python', 'mixing.py'];
             createOptions.Cmd = [];
 
@@ -190,45 +201,61 @@ async function runContainer(cfg) {
         }
 
         const container = await docker.createContainer(createOptions);
+        localContainerId = container.id;
         currentContainerId = container.id;
-        wc.send('container-log', `Создан контейнер ${container.id}`);
+        sendLog(`Создан контейнер ${container.id}`);
 
         const raw = await container.attach({ stream: true, stdout: true, stderr: true });
         const out = new PassThrough(), errStream = new PassThrough();
         docker.modem.demuxStream(raw, out, errStream);
         const norm = (b) => b.toString('utf8').replace(/\r/g, '\n');
 
-        out.on('data', chunk => wc.send('container-log', norm(chunk)));
-        errStream.on('data', chunk => wc.send('container-log', norm(chunk)));
+        out.on('data', chunk => sendLog(norm(chunk)));
+        errStream.on('data', chunk => sendLog(norm(chunk)));
 
 
         await container.start();
-        wc.send('container-log', 'Контейнер запущен');
-        await container.wait();
-        wc.send('container-log', 'Контейнер завершил работу');
-        wc.send('container-done');
+        sendLog('Контейнер запущен');
+        const result = await container.wait();
+        sendLog('Контейнер завершил работу');
+        sendDone('finished', { statusCode: result?.StatusCode });
     } catch (err) {
-        wc.send('container-log', `❌ Ошибка: ${err.message}`);
+        sendLog(`❌ Ошибка: ${err.message}`);
+        sendDone('error', { error: err.message });
     } finally {
-        currentContainerId = null;
+        // не затираем состояние, если уже начат новый запуск
+        if (currentRunToken === runToken) {
+            currentContainerId = null;
+            currentRunToken = null;
+        }
     }
 }
 
 
 ipcMain.on('stop-container', async () => {
+    const wc = mainWindow.webContents;
+    const token = currentRunToken;
+    const sendLog = (line) => wc.send('container-log', { runToken: token, line: String(line ?? '') });
+    const sendDone = (reason, extra = {}) => wc.send('container-done', { runToken: token, reason, ...extra });
+
     if (!currentContainerId) {
-        mainWindow.webContents.send('container-log', '⚠ Нет активного контейнера.');
+        sendLog('⚠ Нет активного контейнера.');
         return;
     }
     const cid = currentContainerId;
-    currentContainerId = null;
     try {
         const container = docker.getContainer(cid);
         await container.stop();
         await container.remove().catch(()=>{});
-        mainWindow.webContents.send('container-log', '🛑 Контейнер остановлен и удалён.');
+        sendLog('🛑 Контейнер остановлен и удалён.');
     } catch (err) {
-        mainWindow.webContents.send('container-log', `❌ Не удалось остановить контейнер: ${err.message}`);
+        sendLog(`❌ Не удалось остановить контейнер: ${err.message}`);
+    }
+    finally {
+        // завершаем именно текущий запуск
+        if (currentContainerId === cid) currentContainerId = null;
+        if (currentRunToken === token) currentRunToken = null;
+        sendDone('stopped');
     }
 });
 

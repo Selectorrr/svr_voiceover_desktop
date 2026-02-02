@@ -30,6 +30,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const alignSpinner   = document.getElementById('alignSpinner');
     const mixingSpinner  = document.getElementById('mixingSpinner');
 
+    // --- запуск/остановка: защита от "поздних" событий от прошлых запусков ---
+    let runSeq = 0;
+    let activeRunToken = null;
+
     // --- элементы доп. параметров ---
     const nJobsInput     = document.getElementById('n_jobs');
     const nJobsAuto      = document.getElementById('n_jobs_auto');
@@ -515,6 +519,7 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
 
     // UI state
     function startRun(mode){
+        activeRunToken = ++runSeq;
         // выключаем все кнопки
         runBtn.disabled     = true;
         alignBtn.disabled   = true;
@@ -542,6 +547,8 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
 
         stopBtn.disabled = false;
         stopSpinner.classList.add('d-none');
+
+        return activeRunToken;
     }
 
     function endRun(){
@@ -656,7 +663,17 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
             }
     }
 
-    window.api.onLog(chunk => {
+    window.api.onLog(payload => {
+        // payload: { runToken, line }
+        let token = null;
+        let chunk = payload;
+        if (payload && typeof payload === 'object' && ('line' in payload)) {
+            token = payload.runToken;
+            chunk = payload.line;
+        }
+        // игнорируем события не от текущего запуска
+        if (activeRunToken !== null && token !== null && token !== activeRunToken) return;
+
         // контейнер шлёт stdout/stderr кусками, собираем из них строки
         if (typeof chunk !== 'string') chunk = String(chunk ?? '');
         logRemainder += chunk;
@@ -668,12 +685,24 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
             addLogLine(raw.replace(/\r$/, ''));
         }
     });
-    window.api.onDone(() => {
+    window.api.onDone(payload => {
+        // payload: { runToken, reason }
+        const token = (payload && typeof payload === 'object') ? payload.runToken : null;
+        if (activeRunToken !== null && token !== null && token !== activeRunToken) return;
+
         if (logRemainder) { addLogLine(logRemainder); logRemainder = ''; }
         scheduleFlush();
-        showToast('Готово','success');
+
+        const reason = (payload && typeof payload === 'object') ? payload.reason : 'finished';
+        if (reason === 'finished') showToast('Готово','success');
+        // reason === 'error' — тост уже показан по строке "❌ ..."
+
         endRun();
         stopBtn.disabled = true;
+        stopSpinner.classList.add('d-none');
+
+        // сбрасываем активный токен — поздние логи этого запуска нас уже не волнуют
+        activeRunToken = null;
     });
 
     // Submit
@@ -688,7 +717,7 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
         if (!form.checkValidity()) return form.classList.add('was-validated');
         form.classList.remove('was-validated');
         logsEl.textContent='';
-        startRun('synthesize');
+        const token = startRun('synthesize');
 
         const device = document.getElementById('device').value;
         const providers = device === 'CUDAExecutionProvider'
@@ -697,6 +726,7 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
 
 
         const cfg = {
+            _runToken: token,
             mode: 'synthesize',
             api_key: document.getElementById('api_key').value,
             path_filter: document.getElementById('path_filter').value,
@@ -761,9 +791,10 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
     alignBtn.onclick = () => {
         if (!ensureWorkdirOrToast()) return;
         logsEl.textContent = '';
-        startRun('align');
+        const token = startRun('align');
         const cfg = {
             ...buildBaseCfg(),
+            _runToken: token,
             mode: 'align',
             align_use_voice_len: true,
         };
@@ -773,9 +804,10 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
     mixingBtn.onclick = () => {
         if (!ensureWorkdirOrToast()) return;
         logsEl.textContent = '';
-        startRun('mixing');
+        const token = startRun('mixing');
         const cfg = {
             ...buildBaseCfg(),
+            _runToken: token,
             mode: 'mixing',
         };
         window.api.runContainer(cfg);

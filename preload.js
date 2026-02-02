@@ -2,8 +2,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
     runContainer: cfg       => ipcRenderer.send('run-container', cfg),
-    onLog:       cb         => ipcRenderer.on('container-log', (_e, line) => cb(line)),
-    onDone:      cb         => ipcRenderer.on('container-done', () => cb()),
+    // payload format:
+    //  - container-log:  { runToken, line }
+    //  - container-done: { runToken, reason, statusCode?, error? }
+    onLog:       cb         => ipcRenderer.on('container-log', (_e, payload) => cb(payload)),
+    onDone:      cb         => ipcRenderer.on('container-done', (_e, payload) => cb(payload)),
     minimizeWindow: () => ipcRenderer.send('minimize-window'),
     closeWindow: ()         => ipcRenderer.send('close-window'),
     selectWorkdir: () => ipcRenderer.invoke('select-workdir'),
