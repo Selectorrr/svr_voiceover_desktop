@@ -1,8 +1,8 @@
 // main.js
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const {app, BrowserWindow, ipcMain, dialog, shell} = require('electron');
 const path = require('path');
 const ProgressBar = require('electron-progressbar');
-const { PassThrough } = require('stream');
+const {PassThrough} = require('stream');
 const fs = require('fs/promises');
 
 const Docker = require('dockerode');
@@ -52,8 +52,10 @@ function createWindow() {
     mainWindow.on('close', () => {
         if (currentContainerId) {
             const container = docker.getContainer(currentContainerId);
-            container.stop().catch(()=>{});
-            container.remove().catch(()=>{});
+            container.stop().catch(() => {
+            });
+            container.remove().catch(() => {
+            });
             currentContainerId = null;
             currentRunToken = null;
         }
@@ -65,7 +67,7 @@ async function pullImage(image, sendLog) {
     const bar = new ProgressBar({
         text: `Загрузка ${image}`,
         detail: 'Подготовка…',
-        browserWindow: { parent: mainWindow, modal: true },
+        browserWindow: {parent: mainWindow, modal: true},
     });
     const stream = await docker.pull(image);
     await new Promise((resolve, reject) => {
@@ -97,8 +99,8 @@ async function runContainer(cfg) {
     // токен запуска приходит из renderer; нужен, чтобы игнорировать "поздние" done/log от прошлого запуска
     const runToken = cfg?._runToken ?? null;
 
-    const sendLog = (line) => wc.send('container-log', { runToken, line: String(line ?? '') });
-    const sendDone = (reason, extra = {}) => wc.send('container-done', { runToken, reason, ...extra });
+    const sendLog = (line) => wc.send('container-log', {runToken, line: String(line ?? '')});
+    const sendDone = (reason, extra = {}) => wc.send('container-done', {runToken, reason, ...extra});
 
     // помечаем текущий запуск
     currentRunToken = runToken;
@@ -109,10 +111,10 @@ async function runContainer(cfg) {
     const image = 'selector/voiceover:latest';
     let localContainerId = null;
     try {
-        const imgs = await docker.listImages({ filters: { reference: [image] } });
+        const imgs = await docker.listImages({filters: {reference: [image]}});
         if (!imgs.length) await pullImage(image, sendLog);
 
-        const hostConfig = { AutoRemove: true };
+        const hostConfig = {AutoRemove: true};
         if (cfg.workdir) {
             hostConfig.Binds = [`${cfg.workdir}:/workspace/SynthVoiceRu/workspace`];
         }
@@ -127,7 +129,7 @@ async function runContainer(cfg) {
             sendLog('Используем все доступные GPU (--gpus all)');
         }
 
-        let createOptions = { Image: image, HostConfig: hostConfig };
+        let createOptions = {Image: image, HostConfig: hostConfig};
 
 
         if (mode === 'synthesize') {
@@ -146,7 +148,7 @@ async function runContainer(cfg) {
                 '--path_filter', cfg.path_filter || '',
             ];
 
-            if (cfg.n_jobs)    args.push('--n_jobs', String(cfg.n_jobs));
+            if (cfg.n_jobs) args.push('--n_jobs', String(cfg.n_jobs));
             if (cfg.providers) args.push('--providers', ...cfg.providers);
 
             // MOS: включить/выключить
@@ -205,10 +207,17 @@ async function runContainer(cfg) {
         currentContainerId = container.id;
         sendLog(`Создан контейнер ${container.id}`);
 
-        const raw = await container.attach({ stream: true, stdout: true, stderr: true });
+        const raw = await container.attach({stream: true, stdout: true, stderr: true});
         const out = new PassThrough(), errStream = new PassThrough();
         docker.modem.demuxStream(raw, out, errStream);
-        const norm = (b) => b.toString('utf8').replace(/\r/g, '\n');
+        const stripAnsi = (s) => {
+            // basic ANSI escape removal (tqdm, colors, cursor controls)
+            return s
+                .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
+                .replace(/\x1b\][^\x07]*\x07/g, '');
+        };
+// IMPORTANT: do NOT convert \r into \n here — renderer uses \r to "overwrite" progress lines (tqdm)
+        const norm = (b) => stripAnsi(b.toString('utf8'));
 
         out.on('data', chunk => sendLog(norm(chunk)));
         errStream.on('data', chunk => sendLog(norm(chunk)));
@@ -218,10 +227,10 @@ async function runContainer(cfg) {
         sendLog('Контейнер запущен');
         const result = await container.wait();
         sendLog('Контейнер завершил работу');
-        sendDone('finished', { statusCode: result?.StatusCode });
+        sendDone('finished', {statusCode: result?.StatusCode});
     } catch (err) {
         sendLog(`❌ Ошибка: ${err.message}`);
-        sendDone('error', { error: err.message });
+        sendDone('error', {error: err.message});
     } finally {
         // не затираем состояние, если уже начат новый запуск
         if (currentRunToken === runToken) {
@@ -235,8 +244,8 @@ async function runContainer(cfg) {
 ipcMain.on('stop-container', async () => {
     const wc = mainWindow.webContents;
     const token = currentRunToken;
-    const sendLog = (line) => wc.send('container-log', { runToken: token, line: String(line ?? '') });
-    const sendDone = (reason, extra = {}) => wc.send('container-done', { runToken: token, reason, ...extra });
+    const sendLog = (line) => wc.send('container-log', {runToken: token, line: String(line ?? '')});
+    const sendDone = (reason, extra = {}) => wc.send('container-done', {runToken: token, reason, ...extra});
 
     if (!currentContainerId) {
         sendLog('⚠ Нет активного контейнера.');
@@ -246,12 +255,12 @@ ipcMain.on('stop-container', async () => {
     try {
         const container = docker.getContainer(cid);
         await container.stop();
-        await container.remove().catch(()=>{});
+        await container.remove().catch(() => {
+        });
         sendLog('🛑 Контейнер остановлен и удалён.');
     } catch (err) {
         sendLog(`❌ Не удалось остановить контейнер: ${err.message}`);
-    }
-    finally {
+    } finally {
         // завершаем именно текущий запуск
         if (currentContainerId === cid) currentContainerId = null;
         if (currentRunToken === token) currentRunToken = null;
@@ -260,7 +269,7 @@ ipcMain.on('stop-container', async () => {
 });
 
 ipcMain.handle('select-workdir', async () => {
-    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+    const {canceled, filePaths} = await dialog.showOpenDialog(mainWindow, {properties: ['openDirectory']});
     return canceled ? null : filePaths[0];
 });
 
@@ -285,7 +294,7 @@ app.whenReady().then(async () => {
         });
     } catch (err) {
         console.error('docker.ping error:', err);
-        const { response } = await dialog.showMessageBox({
+        const {response} = await dialog.showMessageBox({
             type: 'error',
             title: 'Docker недоступен',
             message: 'Не удалось подключиться к Docker-демону.',
@@ -306,10 +315,10 @@ app.on('window-all-closed', () => {
 
 
 async function copyRecursive(srcDir, destDir) {
-    await fs.mkdir(destDir, { recursive: true });
-    const entries = await fs.readdir(srcDir, { withFileTypes: true });
+    await fs.mkdir(destDir, {recursive: true});
+    const entries = await fs.readdir(srcDir, {withFileTypes: true});
     for (const entry of entries) {
-        const srcPath  = path.join(srcDir, entry.name);
+        const srcPath = path.join(srcDir, entry.name);
         const destPath = path.join(destDir, entry.name);
         if (entry.isDirectory()) {
             // рекурсивно копируем вложенную папку
@@ -320,11 +329,12 @@ async function copyRecursive(srcDir, destDir) {
             try {
                 await fs.access(destPath);
                 exists = true;
-            } catch {}
+            } catch {
+            }
             if (exists) {
-                const { response } = await dialog.showMessageBox({
+                const {response} = await dialog.showMessageBox({
                     type: 'question',
-                    buttons: ['Перезаписать','Пропустить','Отмена'],
+                    buttons: ['Перезаписать', 'Пропустить', 'Отмена'],
                     defaultId: 0, cancelId: 2,
                     title: 'Перезапись файла',
                     message: `Файл "${entry.name}" уже есть.`,
@@ -342,22 +352,22 @@ ipcMain.handle('populate-sample', async (_e, targetDir) => {
     try {
         const samplesDir = path.join(__dirname, 'samples');
         await copyRecursive(samplesDir, targetDir);
-        return { success: true };
+        return {success: true};
     } catch (err) {
         const msg = err.message === 'Операция отменена'
             ? 'Копирование отменено'
             : err.message;
-        return { success: false, message: msg };
+        return {success: false, message: msg};
     }
 });
 
 ipcMain.handle('open-workdir', async (_e, targetDir) => {
-    if (!targetDir) return { success: false, message: 'Папка не выбрана' };
+    if (!targetDir) return {success: false, message: 'Папка не выбрана'};
     try {
         await shell.openPath(targetDir);
-        return { success: true };
+        return {success: true};
     } catch (err) {
         console.error('open-workdir error', err);
-        return { success: false, message: err.message };
+        return {success: false, message: err.message};
     }
 });

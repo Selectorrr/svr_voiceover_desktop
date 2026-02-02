@@ -1,81 +1,85 @@
 // renderer.js
 window.addEventListener('DOMContentLoaded', () => {
-    const form           = document.getElementById('run-form');
-    const runBtn         = document.getElementById('runBtn');
-    const runSpinner     = document.getElementById('runSpinner');
-    const stopBtn        = document.getElementById('stopBtn');
-    const stopSpinner    = document.getElementById('stopSpinner');
-    const clearLogsBtn   = document.getElementById('clearLogsBtn');
-    const copyLogsBtn    = document.getElementById('copyLogsBtn');
-    const logLimitEl     = document.getElementById('logLimit');
-    const logsEl         = document.getElementById('logs');
+    const form = document.getElementById('run-form');
+    const runBtn = document.getElementById('runBtn');
+    const runSpinner = document.getElementById('runSpinner');
+    const stopBtn = document.getElementById('stopBtn');
+    const stopSpinner = document.getElementById('stopSpinner');
+    const clearLogsBtn = document.getElementById('clearLogsBtn');
+    const copyLogsBtn = document.getElementById('copyLogsBtn');
+    const logLimitEl = document.getElementById('logLimit');
+    const logsEl = document.getElementById('logs');
     const progressInline = document.getElementById('progressInline');
-    const progressBar    = progressInline.querySelector('.progress-bar');
-    const progressLabel  = document.getElementById('progressLabel');
+    const progressBar = progressInline.querySelector('.progress-bar');
+    const progressLabel = document.getElementById('progressLabel');
     const toastContainer = document.getElementById('toastContainer');
-    const infoModal      = new bootstrap.Modal(document.getElementById('infoModal'));
-    const infoModalBody  = document.getElementById('infoModalBody');
-    const themeToggle    = document.getElementById('themeToggle');
-    const closeBtn       = document.getElementById('closeBtn');
-    const minimizeBtn    = document.getElementById('minimizeBtn');
-    const chooseDirBtn   = document.getElementById('chooseDirBtn');
-    const workdirInput   = document.getElementById('workdir');
+    const infoModal = new bootstrap.Modal(document.getElementById('infoModal'));
+    const infoModalBody = document.getElementById('infoModalBody');
+    const themeToggle = document.getElementById('themeToggle');
+    const closeBtn = document.getElementById('closeBtn');
+    const minimizeBtn = document.getElementById('minimizeBtn');
+    const chooseDirBtn = document.getElementById('chooseDirBtn');
+    const workdirInput = document.getElementById('workdir');
     const logsCollapse = document.getElementById('logsCollapse');
     const logsToggleIcon = document.getElementById('logsToggleIcon');
-    const populateSampleBtn  = document.getElementById('populateSampleBtn');
-    const openDirBtn        = document.getElementById('openDirBtn');
+    const populateSampleBtn = document.getElementById('populateSampleBtn');
+    const openDirBtn = document.getElementById('openDirBtn');
     const charCountEl = document.getElementById('charCount');
-    const alignBtn      = document.getElementById('alignBtn');
-    const mixingBtn     = document.getElementById('mixingBtn');
-    const alignSpinner   = document.getElementById('alignSpinner');
-    const mixingSpinner  = document.getElementById('mixingSpinner');
+    const alignBtn = document.getElementById('alignBtn');
+    const mixingBtn = document.getElementById('mixingBtn');
+    const alignSpinner = document.getElementById('alignSpinner');
+    const mixingSpinner = document.getElementById('mixingSpinner');
 
     // --- запуск/остановка: защита от "поздних" событий от прошлых запусков ---
     let runSeq = 0;
     let activeRunToken = null;
 
     // --- элементы доп. параметров ---
-    const nJobsInput     = document.getElementById('n_jobs');
-    const nJobsAuto      = document.getElementById('n_jobs_auto');
-    const prosodyRange   = document.getElementById('prosody_cond_range');
-    const prosodyNumber  = document.getElementById('prosody_cond');
+    const nJobsInput = document.getElementById('n_jobs');
+    const nJobsAuto = document.getElementById('n_jobs_auto');
+    const prosodyRange = document.getElementById('prosody_cond_range');
+    const prosodyNumber = document.getElementById('prosody_cond');
 
     // VC default alpha (показываем только когда vc_type=default)
-    const vcTypeSelect   = document.getElementById('vc_type');
-    const vcAlphaWrap    = document.getElementById('vc_default_alpha_wrap');
-    const vcAlphaRange   = document.getElementById('vc_default_alpha_range');
-    const vcAlphaNumber  = document.getElementById('vc_default_alpha');
-    const vcMinTargetNumber  = document.getElementById('min_target_sec');
+    const vcTypeSelect = document.getElementById('vc_type');
+    const vcAlphaWrap = document.getElementById('vc_default_alpha_wrap');
+    const vcAlphaRange = document.getElementById('vc_default_alpha_range');
+    const vcAlphaNumber = document.getElementById('vc_default_alpha');
+    const vcMinTargetNumber = document.getElementById('min_target_sec');
 
     // Шкалы допусков по длине (центр = конец семпла)
     // Короткие
-    const gapLeftShort       = document.getElementById('gap_left_short');   // насколько можно короче
-    const gapRightShort      = document.getElementById('gap_right_short');  // насколько можно длиннее
-    const gapFillLeftShort   = document.getElementById('gapFillLeftShort');
-    const gapFillRightShort  = document.getElementById('gapFillRightShort');
-    const gapAtempoShort     = document.getElementById('gapAtempoShort');
-    const gapLeftLabelShort  = document.getElementById('gapLeftLabelShort');
+    const gapLeftShort = document.getElementById('gap_left_short');   // насколько можно короче
+    const gapRightShort = document.getElementById('gap_right_short');  // насколько можно длиннее
+    const gapFillLeftShort = document.getElementById('gapFillLeftShort');
+    const gapFillRightShort = document.getElementById('gapFillRightShort');
+    const gapAtempoShort = document.getElementById('gapAtempoShort');
+    const gapLeftLabelShort = document.getElementById('gapLeftLabelShort');
     const gapRightLabelShort = document.getElementById('gapRightLabelShort');
 
     // Длинные
-    const gapLeftLong       = document.getElementById('gap_left_long');
-    const gapRightLong      = document.getElementById('gap_right_long');
-    const gapFillLeftLong   = document.getElementById('gapFillLeftLong');
-    const gapFillRightLong  = document.getElementById('gapFillRightLong');
-    const gapAtempoLong      = document.getElementById('gapAtempoLong');
-    const gapLeftLabelLong  = document.getElementById('gapLeftLabelLong');
+    const gapLeftLong = document.getElementById('gap_left_long');
+    const gapRightLong = document.getElementById('gap_right_long');
+    const gapFillLeftLong = document.getElementById('gapFillLeftLong');
+    const gapFillRightLong = document.getElementById('gapFillRightLong');
+    const gapAtempoLong = document.getElementById('gapAtempoLong');
+    const gapLeftLabelLong = document.getElementById('gapLeftLabelLong');
     const gapRightLabelLong = document.getElementById('gapRightLabelLong');
 
     // Подписи с текущими “потолками” шкалы (зависят от мин/макс скорости)
     // - левый потолок: насколько вообще можно быть короче
     // - правый потолок: насколько вообще можно быть длиннее
-    const gapCapLeftLabel  = document.getElementById('gapCapLeftLabel');
+    const gapCapLeftLabel = document.getElementById('gapCapLeftLabel');
     const gapCapRightLabel = document.getElementById('gapCapRightLabel');
 
-const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
+    const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
 
     function safeParseJson(s) {
-        try { return JSON.parse(s); } catch { return null; }
+        try {
+            return JSON.parse(s);
+        } catch {
+            return null;
+        }
     }
 
     function saveSettings() {
@@ -134,7 +138,7 @@ const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
         vcAlphaWrap.style.display = isDefault ? '' : 'none';
 
         // чтобы не мешались в табе и не выглядели активными
-        if (vcAlphaRange)  vcAlphaRange.disabled  = !isDefault;
+        if (vcAlphaRange) vcAlphaRange.disabled = !isDefault;
         if (vcAlphaNumber) vcAlphaNumber.disabled = !isDefault;
     }
 
@@ -154,24 +158,39 @@ const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
 
     // синхронизируем просодию
     syncProsody('number');
-    prosodyRange?.addEventListener('input', () => { syncProsody('range'); saveSettings(); });
-    prosodyNumber?.addEventListener('input', () => { syncProsody('number'); saveSettings(); });
+    prosodyRange?.addEventListener('input', () => {
+        syncProsody('range');
+        saveSettings();
+    });
+    prosodyNumber?.addEventListener('input', () => {
+        syncProsody('number');
+        saveSettings();
+    });
 
     // VC default alpha
     syncVcAlpha('number');
     updateVcAlphaVisibility();
-    vcTypeSelect?.addEventListener('change', () => { updateVcAlphaVisibility(); saveSettings(); });
-    vcAlphaRange?.addEventListener('input', () => { syncVcAlpha('range'); saveSettings(); });
-    vcAlphaNumber?.addEventListener('input', () => { syncVcAlpha('number'); saveSettings(); });
+    vcTypeSelect?.addEventListener('change', () => {
+        updateVcAlphaVisibility();
+        saveSettings();
+    });
+    vcAlphaRange?.addEventListener('input', () => {
+        syncVcAlpha('range');
+        saveSettings();
+    });
+    vcAlphaNumber?.addEventListener('input', () => {
+        syncVcAlpha('number');
+        saveSettings();
+    });
 
     // сохраняем основные поля
     const idsToPersist = [
-        'api_key','path_filter','ext','csv_delimiter','device','batch_size','tone_sample_len','is_respect_mos',
-        'reinit_every','min_prosody_len','speed_clip_max','speed_clip_min','speed_adjust_step_pct',
-        'speed_search_attempts','max_extra_speed',
+        'api_key', 'path_filter', 'ext', 'csv_delimiter', 'device', 'batch_size', 'tone_sample_len', 'is_respect_mos',
+        'reinit_every', 'min_prosody_len', 'speed_clip_max', 'speed_clip_min', 'speed_adjust_step_pct',
+        'speed_search_attempts', 'max_extra_speed',
         // допуски по длине результата
-        'len_t_short','len_t_long','max_longer_pct_short','max_longer_pct_long','max_shorter_pct_short','max_shorter_pct_long',
-        'vc_type','vc_default_alpha', 'min_target_sec'
+        'len_t_short', 'len_t_long', 'max_longer_pct_short', 'max_longer_pct_long', 'max_shorter_pct_short', 'max_shorter_pct_long',
+        'vc_type', 'vc_default_alpha', 'min_target_sec'
     ];
     idsToPersist.forEach(id => {
         const el = document.getElementById(id);
@@ -203,7 +222,7 @@ const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
         return s.replace(/\.?0+$/, '');
     }
 
-    
+
     // --- Шкалы допусков по длине (в процентах) ---
     // Здесь проценты вводятся в долях: 0.15 = 15%.
     // На шкале показываем целые проценты (например 15 = 15%).
@@ -233,19 +252,19 @@ const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
         // Длительность примерно обратно пропорциональна speed.
         // - Для "длиннее": замедление до sMin даёт увеличение длительности примерно (1/sMin - 1)
         // - Для "короче": ускорение до sMax даёт уменьшение длительности примерно (1 - 1/sMax)
-        let capLonger  = (sMin > 0) ? (1.0 / sMin - 1.0) : 0.0;     // доля
+        let capLonger = (sMin > 0) ? (1.0 / sMin - 1.0) : 0.0;     // доля
         let capShorter = (sMax > 0) ? (1.0 - 1.0 / sMax) : 0.0;     // доля
 
         // В проценты, с ограничением 0..50
         let capRight = Math.round(capLonger * 100);
-        let capLeft  = Math.round(capShorter * 100);
+        let capLeft = Math.round(capShorter * 100);
 
         if (!Number.isFinite(capRight)) capRight = 0;
-        if (!Number.isFinite(capLeft))  capLeft  = 0;
+        if (!Number.isFinite(capLeft)) capLeft = 0;
         capRight = Math.max(0, capRight);
-        capLeft  = Math.max(0, capLeft);
+        capLeft = Math.max(0, capLeft);
 
-        return { capLeft, capRight };
+        return {capLeft, capRight};
     }
 
     function clampInt(v, lo, hi) {
@@ -275,17 +294,17 @@ const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
         // kind: 'short' | 'long'
         const isShort = kind === 'short';
 
-        const leftLabel  = isShort ? gapLeftLabelShort  : gapLeftLabelLong;
+        const leftLabel = isShort ? gapLeftLabelShort : gapLeftLabelLong;
         const rightLabel = isShort ? gapRightLabelShort : gapRightLabelLong;
-        const fillLeft   = isShort ? gapFillLeftShort   : gapFillLeftLong;
-        const fillRight  = isShort ? gapFillRightShort  : gapFillRightLong;
+        const fillLeft = isShort ? gapFillLeftShort : gapFillLeftLong;
+        const fillRight = isShort ? gapFillRightShort : gapFillRightLong;
 
-        if (leftLabel)  leftLabel.textContent  = fmtPctLabel(leftPctInt,  '-');
+        if (leftLabel) leftLabel.textContent = fmtPctLabel(leftPctInt, '-');
         if (rightLabel) rightLabel.textContent = fmtPctLabel(rightPctInt, '+');
 
         // Заливка вокруг центра:
         // левая/правая половины — это 50% ширины каждая.
-        const leftW  = (capLeft  > 0) ? (leftPctInt  / capLeft)  * 50 : 0;   // 0..50
+        const leftW = (capLeft > 0) ? (leftPctInt / capLeft) * 50 : 0;   // 0..50
         const rightW = (capRight > 0) ? (rightPctInt / capRight) * 50 : 0;   // 0..50
 
         if (fillLeft) {
@@ -313,43 +332,47 @@ const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
 
     function setSliderCaps({capLeft, capRight}) {
         // max для левых/правых ползунков
-        [gapLeftShort, gapLeftLong].forEach(el => { if (el) el.max = String(capLeft); });
-        [gapRightShort, gapRightLong].forEach(el => { if (el) el.max = String(capRight); });
+        [gapLeftShort, gapLeftLong].forEach(el => {
+            if (el) el.max = String(capLeft);
+        });
+        [gapRightShort, gapRightLong].forEach(el => {
+            if (el) el.max = String(capRight);
+        });
 
         // показываем пользователю текущие максимальные границы шкалы
-        if (gapCapLeftLabel)  gapCapLeftLabel.textContent  = `-${capLeft}%`;
+        if (gapCapLeftLabel) gapCapLeftLabel.textContent = `-${capLeft}%`;
         if (gapCapRightLabel) gapCapRightLabel.textContent = `+${capRight}%`;
     }
 
     function applyInputsToSliders() {
-        const { capLeft, capRight } = getGapCapsPctInt();
+        const {capLeft, capRight} = getGapCapsPctInt();
         setSliderCaps({capLeft, capRight});
 
         // Короткие
-        const shortLeft  = pctIntFromInput('max_shorter_pct_short', capLeft);
+        const shortLeft = pctIntFromInput('max_shorter_pct_short', capLeft);
         const shortRight = pctIntFromInput('max_longer_pct_short', capRight);
-        if (gapLeftShort)  gapLeftShort.value  = String(shortLeft);
+        if (gapLeftShort) gapLeftShort.value = String(shortLeft);
         if (gapRightShort) gapRightShort.value = String(shortRight);
         updateGapUi('short', shortLeft, shortRight, capLeft, capRight);
 
         // Длинные
-        const longLeft  = pctIntFromInput('max_shorter_pct_long', capLeft);
+        const longLeft = pctIntFromInput('max_shorter_pct_long', capLeft);
         const longRight = pctIntFromInput('max_longer_pct_long', capRight);
-        if (gapLeftLong)  gapLeftLong.value  = String(longLeft);
+        if (gapLeftLong) gapLeftLong.value = String(longLeft);
         if (gapRightLong) gapRightLong.value = String(longRight);
         updateGapUi('long', longLeft, longRight, capLeft, capRight);
     }
 
     function applySlidersToInputs(kind) {
-        const { capLeft, capRight } = getGapCapsPctInt();
+        const {capLeft, capRight} = getGapCapsPctInt();
         setSliderCaps({capLeft, capRight});
 
         const isShort = kind === 'short';
 
-        const leftSlider  = isShort ? gapLeftShort  : gapLeftLong;
+        const leftSlider = isShort ? gapLeftShort : gapLeftLong;
         const rightSlider = isShort ? gapRightShort : gapRightLong;
 
-        const leftPctInt  = clampInt(leftSlider?.value,  0, capLeft);
+        const leftPctInt = clampInt(leftSlider?.value, 0, capLeft);
         const rightPctInt = clampInt(rightSlider?.value, 0, capRight);
 
         if (isShort) {
@@ -366,19 +389,19 @@ const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
     // Если пользователь поменял min/max speed — диапазон шкал меняется.
     // Подстраиваем max у ползунков и поджимаем текущие значения, если они выходят за новые границы.
     function onSpeedClipChanged() {
-        const { capLeft, capRight } = getGapCapsPctInt();
+        const {capLeft, capRight} = getGapCapsPctInt();
         setSliderCaps({capLeft, capRight});
 
         // поджимаем скрытые значения-конфиги, если стали больше капа
         const curShorterShort = pctIntFromInput('max_shorter_pct_short', capLeft);
-        const curShorterLong  = pctIntFromInput('max_shorter_pct_long',  capLeft);
-        const curLongerShort  = pctIntFromInput('max_longer_pct_short',  capRight);
-        const curLongerLong   = pctIntFromInput('max_longer_pct_long',   capRight);
+        const curShorterLong = pctIntFromInput('max_shorter_pct_long', capLeft);
+        const curLongerShort = pctIntFromInput('max_longer_pct_short', capRight);
+        const curLongerLong = pctIntFromInput('max_longer_pct_long', capRight);
 
         setInputFromPctInt('max_shorter_pct_short', curShorterShort);
-        setInputFromPctInt('max_shorter_pct_long',  curShorterLong);
-        setInputFromPctInt('max_longer_pct_short',  curLongerShort);
-        setInputFromPctInt('max_longer_pct_long',   curLongerLong);
+        setInputFromPctInt('max_shorter_pct_long', curShorterLong);
+        setInputFromPctInt('max_longer_pct_short', curLongerShort);
+        setInputFromPctInt('max_longer_pct_long', curLongerLong);
 
         // и обновляем сами шкалы
         applyInputsToSliders();
@@ -410,19 +433,31 @@ const SETTINGS_KEY = 'svr_voiceover_desktop_settings_v1';
     gapLeftLong?.addEventListener('pointerdown', () => bringToFront(gapLeftLong, gapRightLong));
     gapRightLong?.addEventListener('pointerdown', () => bringToFront(gapRightLong, gapLeftLong));
 
-    gapLeftShort?.addEventListener('input', () => { applySlidersToInputs('short'); saveSettings(); });
-    gapRightShort?.addEventListener('input', () => { applySlidersToInputs('short'); saveSettings(); });
+    gapLeftShort?.addEventListener('input', () => {
+        applySlidersToInputs('short');
+        saveSettings();
+    });
+    gapRightShort?.addEventListener('input', () => {
+        applySlidersToInputs('short');
+        saveSettings();
+    });
 
-    gapLeftLong?.addEventListener('input', () => { applySlidersToInputs('long'); saveSettings(); });
-    gapRightLong?.addEventListener('input', () => { applySlidersToInputs('long'); saveSettings(); });
+    gapLeftLong?.addEventListener('input', () => {
+        applySlidersToInputs('long');
+        saveSettings();
+    });
+    gapRightLong?.addEventListener('input', () => {
+        applySlidersToInputs('long');
+        saveSettings();
+    });
 
     // если значения поменялись “снаружи” (из настроек) — обновляем шкалы
-    ['max_longer_pct_short','max_shorter_pct_short','max_longer_pct_long','max_shorter_pct_long']
+    ['max_longer_pct_short', 'max_shorter_pct_short', 'max_longer_pct_long', 'max_shorter_pct_long']
         .forEach(id => document.getElementById(id)?.addEventListener('input', () => {
             applyInputsToSliders();
         }));
 
-logsCollapse.addEventListener('show.bs.collapse', () => {
+    logsCollapse.addEventListener('show.bs.collapse', () => {
         logsToggleIcon.classList.replace('bi-chevron-down', 'bi-chevron-up');
     });
     logsCollapse.addEventListener('hide.bs.collapse', () => {
@@ -437,7 +472,7 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
             document.documentElement.dataset.bsTheme === 'dark' ? 'light' : 'dark';
     };
     // Окно
-    closeBtn.onclick    = () => window.api.closeWindow();
+    closeBtn.onclick = () => window.api.closeWindow();
     minimizeBtn.onclick = () => window.api.minimizeWindow();
 
     // Выбор папки
@@ -483,7 +518,7 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
             logsEl.textContent = '';
         }
         if (e.key === 'Escape') {
-            new bootstrap.Collapse(document.getElementById('advancedOptions'), { toggle: true });
+            new bootstrap.Collapse(document.getElementById('advancedOptions'), {toggle: true});
         }
     });
 
@@ -494,17 +529,17 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
         logRemainder = '';
         logsEl.textContent = '';
     };
-    copyLogsBtn.onclick  = () => {
+    copyLogsBtn.onclick = () => {
         navigator.clipboard.writeText(logsEl.textContent);
         showToast('Логи скопированы', 'success');
     };
 
-    function showToast(msg, type='info') {
+    function showToast(msg, type = 'info') {
         const t = document.createElement('div');
         t.className = `toast align-items-center text-white bg-${type} border-0`;
-        t.setAttribute('role','alert');
-        t.setAttribute('aria-live','assertive');
-        t.setAttribute('aria-atomic','true');
+        t.setAttribute('role', 'alert');
+        t.setAttribute('aria-live', 'assertive');
+        t.setAttribute('aria-atomic', 'true');
         t.innerHTML = `
       <div class="d-flex align-items-center">
         <div class="toast-body">${msg}</div>
@@ -512,18 +547,18 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
                 data-bs-dismiss="toast" aria-label="Закрыть"></button>
       </div>`;
         toastContainer.append(t);
-        const bsToast = new bootstrap.Toast(t,{delay:3000});
+        const bsToast = new bootstrap.Toast(t, {delay: 3000});
         bsToast.show();
-        t.addEventListener('hidden.bs.toast',()=>t.remove());
+        t.addEventListener('hidden.bs.toast', () => t.remove());
     }
 
     // UI state
-    function startRun(mode){
+    function startRun(mode) {
         activeRunToken = ++runSeq;
         // выключаем все кнопки
-        runBtn.disabled     = true;
-        alignBtn.disabled   = true;
-        mixingBtn.disabled  = true;
+        runBtn.disabled = true;
+        alignBtn.disabled = true;
+        mixingBtn.disabled = true;
 
         // скрываем все спиннеры
         runSpinner.classList.add('d-none');
@@ -551,10 +586,10 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
         return activeRunToken;
     }
 
-    function endRun(){
-        runBtn.disabled     = false;
-        alignBtn.disabled   = false;
-        mixingBtn.disabled  = false;
+    function endRun() {
+        runBtn.disabled = false;
+        alignBtn.disabled = false;
+        mixingBtn.disabled = false;
 
         runSpinner.classList.add('d-none');
         alignSpinner.classList.add('d-none');
@@ -573,30 +608,50 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
 
     // IPC
     if (!window.api) return console.error('API не найдено');
-        // --- Логи: буфер на N строк, чтобы интерфейс не тормозил ---
+    // --- Логи: буфер на N строк, чтобы интерфейс не тормозил ---
     const LOG_LIMIT_KEY = 'svr.logLimitLines';
     let maxLogLines = 2000;
 
     try {
         const saved = Number(localStorage.getItem(LOG_LIMIT_KEY));
         if (Number.isFinite(saved) && saved > 0) maxLogLines = saved;
-    } catch (_e) {}
+    } catch (_e) {
+    }
 
     if (logLimitEl) {
         logLimitEl.value = String(maxLogLines);
         logLimitEl.addEventListener('change', () => {
             const v = Number(logLimitEl.value) || 2000;
             maxLogLines = Math.max(100, v);
-            try { localStorage.setItem(LOG_LIMIT_KEY, String(maxLogLines)); } catch (_e) {}
+            try {
+                localStorage.setItem(LOG_LIMIT_KEY, String(maxLogLines));
+            } catch (_e) {
+            }
             trimLogs();
             renderLogs(true);
         });
     }
 
-    let logBuffer = [];
+    let logBuffer = [];        // обычные строки лога
     let pendingLines = [];
     let flushScheduled = false;
+    let logsDirty = false;
     let logRemainder = '';
+
+    // --- "живые" строки прогресса (чтобы 2 tqdm-бара не перетирали друг друга) ---
+    // tqdm в терминале рисует прогресс бар через \r/перемещение курсора.
+    // В текстовом поле мы вместо "перерисовать последнюю строку" держим 2 отдельные строки:
+    //  - общий прогресс
+    //  - прогресс текущего батча/джоба
+    let liveOverall = null;
+    let liveJob = null;
+    let liveDirty = false;
+
+    function stripAnsi(s) {
+        return String(s ?? '')
+            .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
+            .replace(/\x1b\][^\x07]*\x07/g, '');
+    }
 
     function trimLogs() {
         if (logBuffer.length > maxLogLines) {
@@ -604,9 +659,15 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
         }
     }
 
-    function renderLogs(forceScroll=false) {
+    function renderLogs(forceScroll = false) {
         const atBottom = forceScroll || (logsEl.scrollTop + logsEl.clientHeight >= logsEl.scrollHeight - 10);
-        logsEl.textContent = logBuffer.length ? (logBuffer.join('\n') + '\n') : '';
+
+        const out = [];
+        if (logBuffer.length) out.push(...logBuffer);
+        if (liveOverall) out.push(liveOverall);
+        if (liveJob) out.push(liveJob);
+
+        logsEl.textContent = out.length ? (out.join('\n') + '\n') : '';
         if (atBottom) logsEl.scrollTop = logsEl.scrollHeight;
     }
 
@@ -616,51 +677,69 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
 
         const flush = () => {
             flushScheduled = false;
-            if (!pendingLines.length) return;
-            logBuffer.push(...pendingLines);
-            pendingLines = [];
-            trimLogs();
+            if (!logsDirty && !liveDirty) return;
+            if (pendingLines.length) {
+                logBuffer.push(...pendingLines);
+                pendingLines = [];
+                trimLogs();
+            }
             renderLogs(false);
+            logsDirty = false;
+            liveDirty = false;
         };
 
         (window.requestAnimationFrame || window.setTimeout)(flush, 0);
     }
 
     function addLogLine(line) {
+        logsDirty = true;
         pendingLines.push(line);
         scheduleFlush();
         handleLogLine(line);
     }
 
+
+    function setLive(which, line) {
+        line = String(line ?? '').replace(/\s+$/, '');
+        if (!line) return;
+        if (which === 'overall') liveOverall = line;
+        else liveJob = line;
+        liveDirty = true;
+        scheduleFlush();
+        handleLogLine(line);
+    }
+
     function handleLogLine(line) {
-            if (line.startsWith('❌')) {
-                endRun(); showToast(line,'danger');
-            }
-            if (line.includes('Контейнер остановлен и удалён.')) {
-                stopBtn.disabled=true; stopSpinner.classList.add('d-none');
-            }
+        if (line.startsWith('❌')) {
+            endRun();
+            showToast(line, 'danger');
+        }
+        if (line.includes('Контейнер остановлен и удалён.')) {
+            stopBtn.disabled = true;
+            stopSpinner.classList.add('d-none');
+        }
 
-            // --- обновляем баланс символов ---
-            const m = line.match(/Доступно\s+(\d+)\s+символ/);
-            if (m) {
-                const available = Number(m[1]);
-                charCountEl.innerHTML = '&nbsp;' + available.toLocaleString('ru-RU');
-                // ВАЖНО: не выходим, но ниже при парсинге прогресса эту строку отфильтруем
-            }
+        // --- обновляем баланс символов ---
+        const m = line.match(/Доступно\s+(\d+)\s+символ/);
+        if (m) {
+            const available = Number(m[1]);
+            charCountEl.innerHTML = '&nbsp;' + available.toLocaleString('ru-RU');
+            // ВАЖНО: не выходим, но ниже при парсинге прогресса эту строку отфильтруем
+        }
 
-            // --- прогресс: игнорируем строки "Доступно ... символа: XX%|..." ---
-            const pm = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
-            if (pm && !/Доступно\s+\d+\s+символ/.test(line)) {
-                const pct     = Number(pm[1]) || 0;
-                const elapsed = pm[2];
-                const eta     = pm[3];
-                const rate    = pm[4];
+        // --- прогресс: игнорируем строки "Доступно ... символа: XX%|..." ---
+        const pm = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
+        if (pm && !/Доступно\s+\d+\s+символ/.test(line)) {
+            const pct = Number(pm[1]) || 0;
+            const elapsed = pm[2];
+            const eta = pm[3];
+            const rate = pm[4];
 
-                progressBar.style.width = pct + '%';
-                progressInline.classList.remove('d-none');
-                progressLabel.classList.remove('d-none');
-                progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}`;
-            }
+            progressBar.style.width = pct + '%';
+            progressInline.classList.remove('d-none');
+            progressLabel.classList.remove('d-none');
+            progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}`;
+        }
     }
 
     window.api.onLog(payload => {
@@ -676,25 +755,65 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
 
         // контейнер шлёт stdout/stderr кусками, собираем из них строки
         if (typeof chunk !== 'string') chunk = String(chunk ?? '');
+
+        // NOTE: tqdm often обновляет прогресс без "\n" (только "\r").
+        // Поэтому парсим поток посимвольно и реагируем и на "\n", и на "\r".
         logRemainder += chunk;
 
-        const parts = logRemainder.split(/\r?\n/);
-        logRemainder = parts.pop() ?? '';
+        function handleParsedLine(raw, overwrite) {
+            raw = stripAnsi(raw);
+            // tqdm может слать несколько "\r" подряд — берём только финальный кусок
+            if (raw.includes('\r')) raw = raw.split('\r').pop() ?? '';
+            raw = raw.replace(/\s+$/, '');
+            if (!raw) return;
 
-        for (const raw of parts) {
-            addLogLine(raw.replace(/\r$/, ''));
+            const isTqdm = /\d+%\|/.test(raw) && raw.includes('[') && raw.includes(']');
+
+            // overwrite=true значит строка "живая" (перерисовывается) —
+            // даже если мы не распознали tqdm, показываем её в live-слоте.
+            if (isTqdm || overwrite) {
+                if (/^\s*Общий\s+прогресс\s*:/i.test(raw)) {
+                    setLive('overall', raw);
+                } else if (/Доступно\s+\d+\s+символ/i.test(raw) || /\bjob_n\b/i.test(raw)) {
+                    setLive('job', raw);
+                } else {
+                    setLive('job', raw);
+                }
+            } else {
+                addLogLine(raw);
+            }
         }
+
+        let cur = '';
+        for (let i = 0; i < logRemainder.length; i++) {
+            const ch = logRemainder[i];
+            if (ch === '\n' || ch === '\r') {
+                handleParsedLine(cur, ch === '\r');
+                cur = '';
+            } else {
+                cur += ch;
+            }
+        }
+        logRemainder = cur;
     });
     window.api.onDone(payload => {
         // payload: { runToken, reason }
         const token = (payload && typeof payload === 'object') ? payload.runToken : null;
         if (activeRunToken !== null && token !== null && token !== activeRunToken) return;
 
-        if (logRemainder) { addLogLine(logRemainder); logRemainder = ''; }
+        if (logRemainder) {
+            addLogLine(logRemainder);
+            logRemainder = '';
+        }
+
+        // фиксируем прогрессбары (убираем "живые" строки после завершения)
+        liveOverall = null;
+        liveJob = null;
+        liveDirty = true;
         scheduleFlush();
 
         const reason = (payload && typeof payload === 'object') ? payload.reason : 'finished';
-        if (reason === 'finished') showToast('Готово','success');
+        if (reason === 'finished') showToast('Готово', 'success');
         // reason === 'error' — тост уже показан по строке "❌ ..."
 
         endRun();
@@ -716,7 +835,7 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
         }
         if (!form.checkValidity()) return form.classList.add('was-validated');
         form.classList.remove('was-validated');
-        logsEl.textContent='';
+        logsEl.textContent = '';
         const token = startRun('synthesize');
 
         const device = document.getElementById('device').value;
@@ -781,7 +900,7 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
             ? ['CUDAExecutionProvider', 'CPUExecutionProvider']
             : ['CPUExecutionProvider'];
         return {
-            workdir:       workdirInput.value || null,
+            workdir: workdirInput.value || null,
             csv_delimiter: document.getElementById('csv_delimiter').value,
             providers,
             // api_key тут не нужен, скрипты align/mixing его не используют
@@ -812,7 +931,6 @@ logsCollapse.addEventListener('show.bs.collapse', () => {
         };
         window.api.runContainer(cfg);
     };
-
 
 
     populateSampleBtn.addEventListener('click', async () => {
