@@ -155,6 +155,7 @@ async function runContainer(cfg) {
             if (cfg.is_respect_mos === false) args.push('--no_respect_mos');
             else args.push('--is_respect_mos');
 
+            pushArg(args, '--put_yo', cfg.put_yo);
             pushArg(args, '--tone_sample_len', cfg.tone_sample_len);
             pushArg(args, '--reinit_every', cfg.reinit_every);
             pushArg(args, '--prosody_cond', cfg.prosody_cond);

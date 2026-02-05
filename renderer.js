@@ -186,6 +186,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // сохраняем основные поля
     const idsToPersist = [
         'api_key', 'path_filter', 'ext', 'csv_delimiter', 'device', 'batch_size', 'tone_sample_len', 'is_respect_mos',
+        'put_yo',
         'reinit_every', 'min_prosody_len', 'speed_clip_max', 'speed_clip_min', 'speed_adjust_step_pct',
         'speed_search_attempts', 'max_extra_speed',
         // допуски по длине результата
@@ -859,6 +860,7 @@ window.addEventListener('DOMContentLoaded', () => {
             // --- недостающие параметры entrypoint.py ---
             tone_sample_len: Number(document.getElementById('tone_sample_len').value),
             is_respect_mos: document.getElementById('is_respect_mos').checked,
+            put_yo: document.getElementById('put_yo')?.checked ?? true,
 
             reinit_every: Number(document.getElementById('reinit_every').value),
             prosody_cond: Number(prosodyNumber.value),
