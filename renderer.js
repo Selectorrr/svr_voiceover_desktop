@@ -45,6 +45,13 @@ window.addEventListener('DOMContentLoaded', () => {
     let lastRunCfg = null;        // последняя конфигурация запуска (для перезапуска)
     let pendingRestartCfg = null; // если попросили перезапуск после stop
 
+    // --- App update (GitHub) ---
+    const appStatusEl = document.getElementById('appStatus');
+    const appUpdateBanner = document.getElementById('appUpdateBanner');
+    const appUpdateText = document.getElementById('appUpdateText');
+    const openAppReleaseBtn = document.getElementById('openAppReleaseBtn');
+    let lastAppReleaseUrl = null;
+
     function setImageStatus(state, {quiet = true} = {}) {
         if (!imageStatusEl) return;
 
@@ -84,6 +91,36 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // начальное состояние
     setImageStatus('unknown');
+
+    function setAppStatus(state) {
+        if (!appStatusEl) return;
+        appStatusEl.classList.remove('text-bg-secondary', 'text-bg-success', 'text-bg-warning', 'text-bg-info', 'text-bg-danger', 'text-dark');
+
+        let text = 'App: ?';
+        let cls = 'text-bg-secondary';
+        let extraDark = false;
+
+        if (state === 'checking') {
+            text = 'App: проверка…';
+            cls = 'text-bg-info';
+        } else if (state === 'fresh') {
+            text = 'App: свежий';
+            cls = 'text-bg-success';
+        } else if (state === 'stale') {
+            text = 'App: есть обновление';
+            cls = 'text-bg-warning';
+            extraDark = true;
+        } else if (state === 'unknown') {
+            text = 'App: неизвестно';
+            cls = 'text-bg-secondary';
+        }
+
+        appStatusEl.textContent = text;
+        appStatusEl.classList.add(cls);
+        if (extraDark) appStatusEl.classList.add('text-dark');
+    }
+
+    setAppStatus('unknown');
 
     // --- элементы доп. параметров ---
     const nJobsInput = document.getElementById('n_jobs');
@@ -922,6 +959,30 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // клик по статусу приложения (справа сверху) — ручная проверка
+    appStatusEl?.addEventListener('click', async () => {
+        if (!window.api?.checkAppUpdateNow) {
+            showToast('Проверка обновления приложения недоступна в этой сборке', 'warning');
+            return;
+        }
+        try {
+            setAppStatus('checking');
+            await window.api.checkAppUpdateNow();
+        } catch {
+            // тихо
+        }
+    });
+
+    openAppReleaseBtn?.addEventListener('click', async () => {
+        const url = lastAppReleaseUrl;
+        if (!url) return;
+        try {
+            await window.api?.openAppRelease?.(url);
+        } catch {
+            // тихо
+        }
+    });
+
     // уведомления об обновлении docker-образа
     window.api.onImageUpdate?.((p) => {
         if (!p) return;
@@ -959,6 +1020,37 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // дефолт
         if (p.message) showToast(p.message, (p.type === 'danger') ? 'danger' : 'info');
+    });
+
+    // уведомления об обновлении приложения (GitHub Releases)
+    window.api.onAppUpdate?.((p) => {
+        if (!p) return;
+
+        if (p.type === 'status' && p.state) {
+            setAppStatus(p.state);
+            return;
+        }
+
+        if (p.type === 'update-available') {
+            lastAppReleaseUrl = p.latestUrl || null;
+            if (appUpdateText) {
+                const cur = p.currentVersion ? ` ${p.currentVersion}` : '';
+                const lat = p.latestTag ? ` → ${p.latestTag}` : '';
+                appUpdateText.textContent = `Доступно обновление${cur}${lat}.`;
+            }
+            appUpdateBanner?.classList.remove('d-none');
+            showToast('Доступна новая версия приложения', 'warning');
+            return;
+        }
+
+        if (p.type === 'info' && p.message) {
+            showToast(p.message, 'info');
+            return;
+        }
+
+        if (p.message) {
+            showToast(p.message, 'info');
+        }
     });
 
     function cloneCfgWithoutToken(cfg) {

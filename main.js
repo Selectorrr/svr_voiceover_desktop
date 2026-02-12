@@ -17,6 +17,13 @@ let imageUpdateInProgress = false;
 let lastNotifiedRemoteDigest = null;
 let lastNotifiedMissing = false;
 
+// --- App update check (GitHub Releases) ---
+const APP_REPO_OWNER = 'Selectorrr';
+const APP_REPO_NAME = 'svr_voiceover_desktop';
+const APP_UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12h
+let appUpdateTimer = null;
+let appUpdateInProgress = false;
+
 
 // для дебага — просто посмотреть, что видит процесс
 console.log('DOCKER_HOST =', process.env.DOCKER_HOST);
@@ -305,6 +312,95 @@ async function pullImageUpdateSafe() {
     }
 }
 
+// --- App update check (GitHub Releases) ---
+function _semverParts(v) {
+    const s = String(v || '').trim().replace(/^v/i, '');
+    const main = s.split('-')[0];
+    const parts = main.split('.').map(p => parseInt(p, 10));
+    return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+function _semverGt(a, b) {
+    const A = _semverParts(a);
+    const B = _semverParts(b);
+    for (let i = 0; i < 3; i++) {
+        if (A[i] > B[i]) return true;
+        if (A[i] < B[i]) return false;
+    }
+    return false;
+}
+
+function _httpsJson(options) {
+    return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (c) => data += c);
+            res.on('end', () => {
+                if (res.statusCode !== 200) {
+                    return reject(new Error(`HTTP ${res.statusCode}: ${data.slice(0, 200)}`));
+                }
+                try {
+                    resolve(JSON.parse(data));
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
+        req.on('error', reject);
+        req.end();
+    });
+}
+
+async function checkAppUpdateSafe({manual = false} = {}) {
+    if (!mainWindow) return;
+    if (appUpdateInProgress) return;
+    appUpdateInProgress = true;
+
+    const wc = mainWindow.webContents;
+    const notify = (payload) => {
+        try {
+            wc.send('app-update', payload);
+        } catch {
+        }
+    };
+
+    try {
+        notify({type: 'status', state: 'checking'});
+
+        const currentVersion = app.getVersion();
+        const json = await _httpsJson({
+            hostname: 'api.github.com',
+            path: `/repos/${APP_REPO_OWNER}/${APP_REPO_NAME}/releases/latest`,
+            method: 'GET',
+            headers: {
+                'User-Agent': 'svr_voiceover_desktop',
+                'Accept': 'application/vnd.github+json'
+            }
+        });
+
+        const latestTag = json?.tag_name || json?.name || '';
+        const latestUrl = json?.html_url || `https://github.com/${APP_REPO_OWNER}/${APP_REPO_NAME}/releases/latest`;
+
+        if (latestTag && _semverGt(latestTag, currentVersion)) {
+            notify({type: 'status', state: 'stale', currentVersion, latestTag, latestUrl});
+            notify({type: 'update-available', currentVersion, latestTag, latestUrl});
+        } else {
+            notify({type: 'status', state: 'fresh', currentVersion, latestTag, latestUrl});
+            if (manual) {
+                notify({type: 'info', message: `Приложение уже свежее (${currentVersion}).`});
+            }
+        }
+    } catch (err) {
+        console.warn('app update check failed:', err?.message || err);
+        notify({type: 'status', state: 'unknown'});
+        if (manual) {
+            notify({type: 'info', message: 'Не удалось проверить обновление приложения (можно проигнорировать).'});
+        }
+    } finally {
+        appUpdateInProgress = false;
+    }
+}
+
 async function runContainer(cfg) {
     const wc = mainWindow.webContents;
     const mode = cfg.mode || 'synthesize';
@@ -522,6 +618,31 @@ app.whenReady().then(async () => {
             return await pullImageUpdateSafe();
         });
 
+        // --- проверка обновлений приложения (GitHub Releases) ---
+        setTimeout(() => {
+            checkAppUpdateSafe({manual: false}).catch(() => {
+            });
+        }, 2000);
+        appUpdateTimer = setInterval(() => {
+            checkAppUpdateSafe({manual: false}).catch(() => {
+            });
+        }, APP_UPDATE_INTERVAL_MS);
+
+        ipcMain.handle('check-app-update-now', async () => {
+            await checkAppUpdateSafe({manual: true});
+            return {ok: true};
+        });
+
+        ipcMain.handle('open-app-release', async (_e, url) => {
+            try {
+                if (url) await shell.openExternal(String(url));
+                return {ok: true};
+            } catch (err) {
+                console.warn('open release failed:', err?.message || err);
+                return {ok: false};
+            }
+        });
+
         ipcMain.on('run-container', (_e, cfg) => runContainer(cfg));
         ipcMain.on('minimize-window', () => {
             const w = BrowserWindow.getFocusedWindow();
@@ -556,6 +677,10 @@ app.on('window-all-closed', () => {
     if (imageUpdateTimer) {
         clearInterval(imageUpdateTimer);
         imageUpdateTimer = null;
+    }
+    if (appUpdateTimer) {
+        clearInterval(appUpdateTimer);
+        appUpdateTimer = null;
     }
     if (process.platform !== 'darwin') app.quit();
 });

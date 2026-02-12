@@ -18,6 +18,11 @@ contextBridge.exposeInMainWorld('api', {
     onImageUpdate: cb => ipcRenderer.on('image-update', (_e, payload) => cb(payload)),
     checkImageUpdateNow: () => ipcRenderer.invoke('check-image-update-now'),
     pullImageUpdate: () => ipcRenderer.invoke('pull-image-update'),
+
+    // App update notifications (GitHub Releases)
+    onAppUpdate: cb => ipcRenderer.on('app-update', (_e, payload) => cb(payload)),
+    checkAppUpdateNow: () => ipcRenderer.invoke('check-app-update-now'),
+    openAppRelease: (url) => ipcRenderer.invoke('open-app-release', url),
 });
 
 window.addEventListener('DOMContentLoaded', () => {

@@ -245,6 +245,10 @@
         <span id="imageStatus" class="badge text-bg-secondary" style="cursor:pointer" title="Проверить обновление">
             Образ: ?
         </span>
+        <!-- Статус приложения (клик = ручная проверка) -->
+        <span id="appStatus" class="badge text-bg-secondary" style="cursor:pointer" title="Проверить обновление приложения">
+            App: ?
+        </span>
         <button id="themeToggle" class="btn btn-sm"><i class="bi bi-sun-fill"></i></button>
         <button id="minimizeBtn" class="btn btn-sm mx-1"><i class="bi bi-dash-lg"></i></button>
         <button id="closeBtn" class="btn btn-sm"><i class="bi bi-x-lg"></i></button>
@@ -266,6 +270,21 @@
                 <button id="updateImageBtn" type="button" class="btn btn-sm btn-primary">
                     Обновить
                     <span id="updateImageSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Обновление приложения -->
+    <div id="appUpdateBanner" class="alert alert-warning d-none" role="alert">
+        <div class="d-flex align-items-center justify-content-between gap-2">
+            <div>
+                <strong>Доступна новая версия приложения.</strong>
+                <span id="appUpdateText" class="small">Открой релиз, чтобы скачать обновление.</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button id="openAppReleaseBtn" type="button" class="btn btn-sm btn-primary">
+                    Открыть релиз
                 </button>
             </div>
         </div>
