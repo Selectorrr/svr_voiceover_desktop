@@ -23,6 +23,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const restartModalBody = document.getElementById('restartModalBody');
     const restartNowBtn = document.getElementById('restartNowBtn');
     const themeToggle = document.getElementById('themeToggle');
+    const resetSettingsBtn = document.getElementById('resetSettingsBtn');
     const closeBtn = document.getElementById('closeBtn');
     const minimizeBtn = document.getElementById('minimizeBtn');
     const chooseDirBtn = document.getElementById('chooseDirBtn');
@@ -36,6 +37,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const mixingBtn = document.getElementById('mixingBtn');
     const alignSpinner = document.getElementById('alignSpinner');
     const mixingSpinner = document.getElementById('mixingSpinner');
+
+    // --- reset settings modal ---
+    const resetModal = new bootstrap.Modal(document.getElementById('resetModal'));
+    const resetConfirmBtn = document.getElementById('resetConfirmBtn');
 
     // --- запуск/остановка: защита от "поздних" событий от прошлых запусков ---
     let runSeq = 0;
@@ -52,40 +57,43 @@ window.addEventListener('DOMContentLoaded', () => {
     const openAppReleaseBtn = document.getElementById('openAppReleaseBtn');
     let lastAppReleaseUrl = null;
 
-    function setImageStatus(state, {quiet = true} = {}) {
-        if (!imageStatusEl) return;
+    function _setStatusButton(el, state, prefix) {
+        if (!el) return;
+        const labelEl = el.querySelector('span') || el;
 
-        // reset badge classes
-        imageStatusEl.classList.remove('text-bg-secondary', 'text-bg-success', 'text-bg-warning', 'text-bg-info', 'text-bg-danger', 'text-dark');
+        // reset btn outline variants
+        el.classList.remove(
+            'btn-outline-secondary', 'btn-outline-success', 'btn-outline-warning', 'btn-outline-info', 'btn-outline-danger'
+        );
 
-        let text = 'Образ: ?';
-        let cls = 'text-bg-secondary';
-        let extra = '';
+        let text = `${prefix}: ?`;
+        let cls = 'btn-outline-secondary';
 
         if (state === 'checking') {
-            text = 'Образ: проверка…';
-            cls = 'text-bg-info';
+            text = `${prefix}: проверка…`;
+            cls = 'btn-outline-info';
         } else if (state === 'fresh') {
-            text = 'Образ: свежий';
-            cls = 'text-bg-success';
+            text = `${prefix}: свежий`;
+            cls = 'btn-outline-success';
         } else if (state === 'missing') {
-            text = 'Образ: не скачан';
-            cls = 'text-bg-danger';
+            text = `${prefix}: не скачан`;
+            cls = 'btn-outline-danger';
         } else if (state === 'stale') {
-            text = 'Образ: есть обновление';
-            cls = 'text-bg-warning';
-            extra = ' text-dark';
+            text = `${prefix}: есть обновление`;
+            cls = 'btn-outline-warning';
         } else if (state === 'unknown') {
-            text = 'Образ: неизвестно';
-            cls = 'text-bg-secondary';
+            text = `${prefix}: неизвестно`;
+            cls = 'btn-outline-secondary';
         }
 
-        imageStatusEl.textContent = text;
-        imageStatusEl.classList.add(cls);
-        if (extra) imageStatusEl.classList.add('text-dark');
+        labelEl.textContent = text;
+        el.classList.add(cls);
+    }
 
+    function setImageStatus(state, {quiet = true} = {}) {
+        _setStatusButton(imageStatusEl, state, 'Образ');
         if (!quiet) {
-            // просто на будущее: если захочешь делать тосты отсюда
+            // оставлено на будущее
         }
     }
 
@@ -93,31 +101,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setImageStatus('unknown');
 
     function setAppStatus(state) {
-        if (!appStatusEl) return;
-        appStatusEl.classList.remove('text-bg-secondary', 'text-bg-success', 'text-bg-warning', 'text-bg-info', 'text-bg-danger', 'text-dark');
-
-        let text = 'App: ?';
-        let cls = 'text-bg-secondary';
-        let extraDark = false;
-
-        if (state === 'checking') {
-            text = 'App: проверка…';
-            cls = 'text-bg-info';
-        } else if (state === 'fresh') {
-            text = 'App: свежий';
-            cls = 'text-bg-success';
-        } else if (state === 'stale') {
-            text = 'App: есть обновление';
-            cls = 'text-bg-warning';
-            extraDark = true;
-        } else if (state === 'unknown') {
-            text = 'App: неизвестно';
-            cls = 'text-bg-secondary';
-        }
-
-        appStatusEl.textContent = text;
-        appStatusEl.classList.add(cls);
-        if (extraDark) appStatusEl.classList.add('text-dark');
+        _setStatusButton(appStatusEl, state, 'App');
     }
 
     setAppStatus('unknown');
@@ -194,6 +178,61 @@ window.addEventListener('DOMContentLoaded', () => {
                 el.value = v;
             }
         }
+    }
+
+    function setDefaultForEl(el) {
+        if (!el) return;
+        if (el.type === 'checkbox') {
+            el.checked = !!el.defaultChecked;
+            return;
+        }
+        if (el.tagName === 'SELECT') {
+            const opt = Array.from(el.options || []).find(o => o.defaultSelected) || el.options?.[0];
+            el.value = opt ? opt.value : '';
+            return;
+        }
+        // input/textarea
+        el.value = el.defaultValue ?? '';
+    }
+
+    function resetSettingsKeepTokenAndWorkdir() {
+        const apiEl = document.getElementById('api_key');
+        const keepApi = apiEl ? apiEl.value : '';
+        const keepWorkdir = workdirInput?.value || '';
+
+        // основные поля
+        idsToPersist.forEach(id => {
+            if (id === 'api_key') return; // сохраняем
+            setDefaultForEl(document.getElementById(id));
+        });
+
+        // авто-потоки
+        if (nJobsAuto) nJobsAuto.checked = !!nJobsAuto.defaultChecked;
+        setDefaultForEl(nJobsInput);
+        setAutoJobsUi(nJobsAuto?.checked ?? true);
+
+        // просодия
+        setDefaultForEl(prosodyNumber);
+        setDefaultForEl(prosodyRange);
+        syncProsody('number');
+
+        // VC alpha
+        setDefaultForEl(vcAlphaNumber);
+        setDefaultForEl(vcAlphaRange);
+        syncVcAlpha('number');
+        updateVcAlphaVisibility();
+
+        // возвращаем сохранённые поля
+        if (apiEl) apiEl.value = keepApi;
+        if (workdirInput) workdirInput.value = keepWorkdir;
+
+        // пересчёт зависящих UI
+        applyInputsToSliders();
+        form?.classList.remove('was-validated');
+        workdirInput?.classList.remove('is-invalid');
+
+        saveSettings();
+        showToast('Настройки сброшены', 'success');
     }
 
     function setAutoJobsUi(isAuto) {
@@ -560,6 +599,18 @@ window.addEventListener('DOMContentLoaded', () => {
         document.documentElement.dataset.bsTheme =
             document.documentElement.dataset.bsTheme === 'dark' ? 'light' : 'dark';
     };
+
+    // Сброс настроек
+    resetSettingsBtn?.addEventListener('click', () => {
+        if (resetModal) resetModal.show();
+        else if (confirm('Сбросить настройки к значениям по умолчанию?\nКлюч доступа и рабочая папка останутся.')) {
+            resetSettingsKeepTokenAndWorkdir();
+        }
+    });
+    resetConfirmBtn?.addEventListener('click', () => {
+        resetModal?.hide();
+        resetSettingsKeepTokenAndWorkdir();
+    });
     // Окно
     closeBtn.onclick = () => window.api.closeWindow();
     minimizeBtn.onclick = () => window.api.minimizeWindow();

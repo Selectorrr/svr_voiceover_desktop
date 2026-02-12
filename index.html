@@ -92,6 +92,68 @@
             cursor: pointer;
         }
 
+        /* --- компактные статус-кнопки (обновления/сброс) --- */
+        .status-btn {
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            height: 32px;
+            padding: 0 .65rem;
+            border-radius: .6rem;
+        }
+        .status-btn i { opacity: .9; }
+        .status-btn.status-wide { min-width: 170px; justify-content: center; }
+
+        /* Строка с 3 кнопками: без странных отступов, вровень с полями формы */
+        .status-row{
+            display:flex;
+            align-items:center;
+            gap:8px;
+            flex-wrap:wrap;
+        }
+
+        .status-label{
+            color: var(--bs-secondary-color) !important;
+            font-size: .875rem;
+            margin-right: 4px;
+        }
+
+        /* полностью прозрачные, без бордера, одинаково в обеих темах */
+        .status-btn{
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: var(--bs-body-color) !important;  /* чтобы bootstrap active не ломал */
+            padding: .25rem .5rem;
+        }
+
+        .status-btn:hover{
+            background: var(--bs-secondary-bg) !important;
+        }
+
+        .status-btn:active{
+            background: var(--bs-tertiary-bg) !important;
+        }
+
+        .status-btn:focus,
+        .status-btn:focus-visible{
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .status-btn:active,
+        .status-btn:focus,
+        .status-btn:focus-visible{
+            color: var(--bs-body-color) !important;
+        }
+
+
+        .status-wide{
+            min-width: 170px; /* как у тебя было */
+        }
+
+
         .container {
             padding-top: 0;
         }
@@ -241,17 +303,30 @@
         <i class="bi bi-mic-fill me-1"></i><span>SVR Voiceover Desktop</span>
     </div>
     <div class="d-flex no-drag align-items-center gap-2">
-        <!-- Статус Docker-образа (клик = ручная проверка) -->
-        <span id="imageStatus" class="badge text-bg-secondary" style="cursor:pointer" title="Проверить обновление">
-            Образ: ?
-        </span>
-        <!-- Статус приложения (клик = ручная проверка) -->
-        <span id="appStatus" class="badge text-bg-secondary" style="cursor:pointer" title="Проверить обновление приложения">
-            App: ?
-        </span>
         <button id="themeToggle" class="btn btn-sm"><i class="bi bi-sun-fill"></i></button>
         <button id="minimizeBtn" class="btn btn-sm mx-1"><i class="bi bi-dash-lg"></i></button>
         <button id="closeBtn" class="btn btn-sm"><i class="bi bi-x-lg"></i></button>
+    </div>
+</div>
+
+
+<!-- Модал сброса настроек -->
+<div class="modal fade" id="resetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">Сброс настроек</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Сбросить настройки к значениям по умолчанию?
+                <div class="small text-muted mt-1">Ключ доступа и рабочая папка останутся как есть.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button id="resetConfirmBtn" type="button" class="btn btn-danger">Сбросить</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -291,6 +366,32 @@
     </div>
 
     <form id="run-form" class="row g-3 needs-validation" novalidate>
+
+        <!-- Статусы обновлений и сброс настроек (справа, над ключом) -->
+        <div class="col-12">
+            <div class="status-row">
+                <span class="status-label">Статус:</span>
+
+                <button id="imageStatus" type="button"
+                        class="btn btn-sm status-btn status-wide"
+                        title="Проверить обновление Docker-образа">
+                    <i class="bi bi-box-seam"></i><span>?</span>
+                </button>
+
+                <button id="appStatus" type="button"
+                        class="btn btn-sm status-btn status-wide"
+                        title="Проверить обновление приложения">
+                    <i class="bi bi-github"></i><span>?</span>
+                </button>
+
+                <button id="resetSettingsBtn" type="button"
+                        class="btn btn-sm status-btn"
+                        title="Сбросить настройки">
+                    <i class="bi bi-arrow-counterclockwise"></i><span>Сброс настр.</span>
+                </button>
+
+            </div>
+        </div>
 
         <!-- API Key -->
         <div class="col-md-6">
@@ -592,7 +693,7 @@
                                             <div class="input-group input-group-sm">
                                                 <input type="number" id="speed_search_attempts"
                                                        class="form-control form-control-sm"
-                                                       value="6" min="0" step="1">
+                                                       value="3" min="0" step="1">
                                                 <span class="input-group-text info-trigger"
                                                       data-info="<b>Попытки подбора</b><br>
   Сколько раз уточнять скорость после первого прогона.
@@ -618,7 +719,7 @@
                                             <div class="input-group input-group-sm">
                                                 <input type="number" id="speed_adjust_step_pct"
                                                        class="form-control form-control-sm"
-                                                       value="0.08" min="0" step="0.01">
+                                                       value="0.1" min="0" step="0.01">
                                                 <span class="input-group-text info-trigger"
                                                       data-info="Y: на сколько менять скорость за одну попытку (0.08 = 8%).">
                                                     <i class="bi bi-info-circle-fill"></i>
@@ -653,7 +754,7 @@
                                             <div class="input-group input-group-sm">
                                                 <input type="number" id="speed_clip_max"
                                                        class="form-control form-control-sm"
-                                                       value="2.0" min="0" step="0.01">
+                                                       value="1.25" min="0" step="0.01">
                                                 <span class="input-group-text info-trigger"
                                                       data-info="<b>Макс. скорость</b><br>
   <div>
@@ -757,7 +858,7 @@
                                                     <div class="x-small text-muted">Длинные реплики</div>
                                                     <div class="d-flex gap-2 x-small">
                                                         <span id="gapLeftLabelLong">-5%</span>
-                                                        <span id="gapRightLabelLong">+5%</span>
+                                                        <span id="gapRightLabelLong">+15%</span>
                                                     </div>
                                                 </div>
                                                 <div class="gap-scale" id="gapScaleLong">
@@ -768,14 +869,14 @@
                                                     <div class="gap-center"></div>
                                                     <input type="range" id="gap_left_long" class="gap-range gap-left" min="0" max="50" step="1" value="5"
                                                            aria-label="Длинные: можно короче, %">
-                                                    <input type="range" id="gap_right_long" class="gap-range gap-right" min="0" max="50" step="1" value="5"
+                                                    <input type="range" id="gap_right_long" class="gap-range gap-right" min="0" max="50" step="1" value="15"
                                                            aria-label="Длинные: можно длиннее, %">
                                                 </div>
                                             </div>
                                             <div class="small text-muted mt-1">Левый ползунок — насколько можно короче, правый — насколько можно длиннее.</div>
                                         <!-- значения для конфигурации (скрыты, управляются шкалой) -->
                                         <input type="hidden" id="max_longer_pct_short" value="0.15">
-                                        <input type="hidden" id="max_longer_pct_long" value="0.05">
+                                        <input type="hidden" id="max_longer_pct_long" value="0.15">
                                         <input type="hidden" id="max_shorter_pct_short" value="0.15">
                                         <input type="hidden" id="max_shorter_pct_long" value="0.05">
 
