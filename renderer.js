@@ -549,6 +549,22 @@ window.addEventListener('DOMContentLoaded', () => {
     speedMaxEl?.addEventListener('input', onSpeedClipChanged);
     speedMaxEl?.addEventListener('change', onSpeedClipChanged);
 
+    // Макс. доп. ускорение влияет на маркеры/визуализацию допусков,
+    // поэтому при изменении нужно пересчитать шкалы.
+    const maxExtraSpeedEl = document.getElementById('max_extra_speed');
+    const onMaxExtraSpeedChanged = () => {
+        // нормализуем на всякий случай (0..1), чтобы не уезжали вычисления
+        if (maxExtraSpeedEl) {
+            const v = Number(String(maxExtraSpeedEl.value ?? '').trim().replace(',', '.'));
+            const clamped = Math.max(0, Math.min(1, isFinite(v) ? v : 0));
+            maxExtraSpeedEl.value = fmtFrac(clamped);
+        }
+        applyInputsToSliders();
+        saveSettings();
+    };
+    maxExtraSpeedEl?.addEventListener('input', onMaxExtraSpeedChanged);
+    maxExtraSpeedEl?.addEventListener('change', onMaxExtraSpeedChanged);
+
     // При нажатии поднимаем активный ползунок выше второго (чтобы хваталось предсказуемо)
     function bringToFront(el, other) {
         if (!el || !other) return;
