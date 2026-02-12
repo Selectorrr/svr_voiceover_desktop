@@ -6,6 +6,16 @@ const {PassThrough} = require('stream');
 const fs = require('fs/promises');
 
 const Docker = require('dockerode');
+const https = require('https');
+
+// --- Docker image auto-update (safe, non-spammy) ---
+const VOICEOVER_IMAGE = 'selector/voiceover:latest';
+// interval can be changed later if needed
+const IMAGE_UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h
+let imageUpdateTimer = null;
+let imageUpdateInProgress = false;
+let lastNotifiedRemoteDigest = null;
+let lastNotifiedMissing = false;
 
 
 // для дебага — просто посмотреть, что видит процесс
@@ -92,6 +102,209 @@ async function pullImage(image, sendLog) {
     });
 }
 
+async function inspectImageIdSafe(image) {
+    try {
+        const info = await docker.getImage(image).inspect();
+        return info?.Id || null;
+    } catch {
+        return null;
+    }
+}
+
+function inspectImageDigestSafe(image) {
+    return docker.getImage(image).inspect().then(info => {
+        const digs = Array.isArray(info?.RepoDigests) ? info.RepoDigests : [];
+        // ожидаем что-то вроде: selector/voiceover@sha256:...
+        const hit = digs.find(d => (d || '').startsWith('selector/voiceover@sha256:'));
+        return hit ? hit.split('@')[1] : null;
+    }).catch(() => null);
+}
+
+function httpsRequest(opts) {
+    return new Promise((resolve, reject) => {
+        const req = https.request(opts, (res) => {
+            const chunks = [];
+            res.on('data', (d) => chunks.push(d));
+            res.on('end', () => resolve({
+                statusCode: res.statusCode,
+                headers: res.headers,
+                body: Buffer.concat(chunks).toString('utf8'),
+            }));
+        });
+        req.on('error', reject);
+        req.end();
+    });
+}
+
+// Получить digest манифеста Docker Hub для selector/voiceover:latest
+async function getRemoteDigestDockerHubSafe() {
+    try {
+        // 1) токен
+        const tokenRes = await httpsRequest({
+            method: 'GET',
+            host: 'auth.docker.io',
+            path: '/token?service=registry.docker.io&scope=repository:selector/voiceover:pull',
+            headers: { 'User-Agent': 'svr-voiceover-desktop' },
+        });
+        if (tokenRes.statusCode !== 200) return null;
+        const token = JSON.parse(tokenRes.body || '{}')?.token;
+        if (!token) return null;
+
+        // 2) HEAD по манифесту, чтобы взять Docker-Content-Digest
+        const manRes = await httpsRequest({
+            method: 'HEAD',
+            host: 'registry-1.docker.io',
+            path: '/v2/selector/voiceover/manifests/latest',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
+                'User-Agent': 'svr-voiceover-desktop',
+            },
+        });
+        const digest = manRes?.headers?.['docker-content-digest'];
+        return digest || null;
+    } catch {
+        return null;
+    }
+}
+
+// Проверка наличия обновления (без pull). Никогда не кидает ошибки в UI.
+async function checkImageUpdateSafe({manual = false} = {}) {
+    if (!mainWindow) return;
+    if (imageUpdateInProgress) return;
+
+    imageUpdateInProgress = true;
+    const wc = mainWindow.webContents;
+    const notify = (payload) => {
+        try {
+            wc.send('image-update', payload);
+        } catch {
+        }
+    };
+
+    try {
+        const localId = await inspectImageIdSafe(VOICEOVER_IMAGE);
+        const localDigest = localId ? await inspectImageDigestSafe(VOICEOVER_IMAGE) : null;
+        const remoteDigest = await getRemoteDigestDockerHubSafe();
+
+        // Всегда отправляем «тихий» статус для UI (бейдж справа сверху)
+        // state:
+        //  - fresh: локальный digest совпадает с удалённым
+        //  - stale: есть обновление
+        //  - unknown: не удалось определить (нет docker/сети/образа)
+        let state = 'unknown';
+        if (!localId) {
+            state = 'missing';
+        } else if (localDigest && remoteDigest) {
+            state = (localDigest === remoteDigest) ? 'fresh' : 'stale';
+        }
+        notify({type: 'status', state, localDigest, remoteDigest});
+
+        // Если образ не скачан локально — предлагаем скачать (это тот же pull)
+        if (!localId) {
+            if (manual || !lastNotifiedMissing) {
+                lastNotifiedMissing = true;
+                notify({
+                    type: 'available',
+                    message: 'Docker-образ не найден локально. Нажми «Обновить», чтобы скачать его.',
+                    localDigest: null,
+                    remoteDigest,
+                });
+            }
+            return;
+        }
+
+        if (localDigest && remoteDigest && localDigest !== remoteDigest) {
+            // не спамим: уведомляем один раз на новый digest
+            if (lastNotifiedRemoteDigest !== remoteDigest) {
+                lastNotifiedRemoteDigest = remoteDigest;
+                notify({
+                    type: 'available',
+                    message: 'Доступно обновление Docker-образа (selector/voiceover:latest).',
+                    localDigest,
+                    remoteDigest,
+                });
+            }
+        } else if (manual) {
+            notify({
+                type: 'info',
+                message: remoteDigest ? 'Docker-образ уже актуален.' : 'Docker-образ уже актуален (не удалось проверить digest на Docker Hub).'
+            });
+        }
+    } catch (err) {
+        // важно: не шумим ошибками в UI, только если ручная проверка
+        console.warn('image update check failed:', err?.message || err);
+        // UI-бейдж: «не удалось проверить»
+        try {
+            notify({type: 'status', state: 'unknown'});
+        } catch {
+        }
+        if (manual) {
+            notify({
+                type: 'info',
+                message: 'Не удалось проверить обновление Docker-образа (можно проигнорировать).'
+            });
+        }
+    } finally {
+        imageUpdateInProgress = false;
+    }
+}
+
+// Реальное обновление: docker pull. По завершению — предлагаем перезапуск, если контейнер был запущен.
+async function pullImageUpdateSafe() {
+    if (!mainWindow) return {ok: false};
+    if (imageUpdateInProgress) return {ok: false};
+
+    imageUpdateInProgress = true;
+    const wc = mainWindow.webContents;
+    const notify = (payload) => {
+        try {
+            wc.send('image-update', payload);
+        } catch {
+        }
+    };
+
+    const wasRunning = !!currentContainerId;
+
+    try {
+        notify({type: 'pull-start', message: 'Обновляю Docker-образ…'});
+
+        const stream = await docker.pull(VOICEOVER_IMAGE);
+        await new Promise((resolve, reject) => {
+            docker.modem.followProgress(stream, (err) => (err ? reject(err) : resolve()));
+        });
+
+        // после pull сбрасываем анти-спам, чтобы следующая проверка могла снова сообщить, если появится новый digest
+        lastNotifiedRemoteDigest = null;
+
+        notify({type: 'updated', message: 'Docker-образ обновлён.'});
+
+        // обновим статус в UI сразу после pull
+        try {
+            const localDigest = await inspectImageDigestSafe(VOICEOVER_IMAGE);
+            const remoteDigest = await getRemoteDigestDockerHubSafe();
+            let state = 'unknown';
+            if (localDigest && remoteDigest) {
+                state = (localDigest === remoteDigest) ? 'fresh' : 'stale';
+            }
+            notify({type: 'status', state, localDigest, remoteDigest});
+        } catch {
+            // молча
+        }
+
+        if (wasRunning) {
+            notify({type: 'restart-offer', message: 'Озвучка сейчас запущена. Перезапустить, чтобы применить обновление?'});
+        }
+        return {ok: true, wasRunning};
+    } catch (err) {
+        console.warn('image pull failed:', err?.message || err);
+        notify({type: 'danger', message: 'Не удалось обновить Docker-образ (можно попробовать позже).'});
+        return {ok: false, error: err?.message || String(err)};
+    } finally {
+        imageUpdateInProgress = false;
+    }
+}
+
 async function runContainer(cfg) {
     const wc = mainWindow.webContents;
     const mode = cfg.mode || 'synthesize';
@@ -108,7 +321,7 @@ async function runContainer(cfg) {
     sendLog(`Режим: ${mode}`);
     sendLog(`Получена конфигурация: ${JSON.stringify(cfg)}`);
 
-    const image = 'selector/voiceover:latest';
+    const image = VOICEOVER_IMAGE;
     let localContainerId = null;
     try {
         const imgs = await docker.listImages({filters: {reference: [image]}});
@@ -280,6 +493,35 @@ app.whenReady().then(async () => {
         console.log('docker.ping OK');
         createWindow();
 
+        // первая проверка сразу после старта (тихо, без ошибок в UI)
+        // небольшая задержка — чтобы окно успело отрисоваться
+        setTimeout(() => {
+            checkImageUpdateSafe({manual: false}).catch(() => {
+            });
+        }, 1500);
+
+        // периодическая проверка обновлений docker-образа (без pull и без ошибок в UI)
+        // стартуем не сразу, чтобы не мешать холодному старту
+        setTimeout(() => {
+            checkImageUpdateSafe({manual: false}).catch(() => {
+            });
+        }, 30_000);
+        imageUpdateTimer = setInterval(() => {
+            checkImageUpdateSafe({manual: false}).catch(() => {
+            });
+        }, IMAGE_UPDATE_INTERVAL_MS);
+
+        // ручная проверка (например, по кнопке в UI)
+        ipcMain.handle('check-image-update-now', async () => {
+            await checkImageUpdateSafe({manual: true});
+            return {ok: true};
+        });
+
+        // реальное обновление (docker pull) по кнопке
+        ipcMain.handle('pull-image-update', async () => {
+            return await pullImageUpdateSafe();
+        });
+
         ipcMain.on('run-container', (_e, cfg) => runContainer(cfg));
         ipcMain.on('minimize-window', () => {
             const w = BrowserWindow.getFocusedWindow();
@@ -311,6 +553,10 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+    if (imageUpdateTimer) {
+        clearInterval(imageUpdateTimer);
+        imageUpdateTimer = null;
+    }
     if (process.platform !== 'darwin') app.quit();
 });
 

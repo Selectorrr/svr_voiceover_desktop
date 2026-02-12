@@ -13,6 +13,11 @@ contextBridge.exposeInMainWorld('api', {
     stopContainer: () => ipcRenderer.send('stop-container'),
     populateSample: (dir)  => ipcRenderer.invoke('populate-sample', dir),
     openWorkdir:      dir   => ipcRenderer.invoke('open-workdir', dir),
+
+    // Docker image update notifications
+    onImageUpdate: cb => ipcRenderer.on('image-update', (_e, payload) => cb(payload)),
+    checkImageUpdateNow: () => ipcRenderer.invoke('check-image-update-now'),
+    pullImageUpdate: () => ipcRenderer.invoke('pull-image-update'),
 });
 
 window.addEventListener('DOMContentLoaded', () => {

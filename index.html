@@ -240,7 +240,11 @@
     <div class="d-flex align-items-center">
         <i class="bi bi-mic-fill me-1"></i><span>SVR Voiceover Desktop</span>
     </div>
-    <div class="d-flex no-drag">
+    <div class="d-flex no-drag align-items-center gap-2">
+        <!-- Статус Docker-образа (клик = ручная проверка) -->
+        <span id="imageStatus" class="badge text-bg-secondary" style="cursor:pointer" title="Проверить обновление">
+            Образ: ?
+        </span>
         <button id="themeToggle" class="btn btn-sm"><i class="bi bi-sun-fill"></i></button>
         <button id="minimizeBtn" class="btn btn-sm mx-1"><i class="bi bi-dash-lg"></i></button>
         <button id="closeBtn" class="btn btn-sm"><i class="bi bi-x-lg"></i></button>
@@ -250,6 +254,23 @@
 
 <div id="content">
 <div class="container pt-4">
+
+    <!-- Обновление Docker-образа -->
+    <div id="updateBanner" class="alert alert-warning d-none" role="alert">
+        <div class="d-flex align-items-center justify-content-between gap-2">
+            <div>
+                <strong>Доступно обновление Docker-образа.</strong>
+                <span class="small">Нужно, чтобы получить последние фиксы/модель.</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button id="updateImageBtn" type="button" class="btn btn-sm btn-primary">
+                    Обновить
+                    <span id="updateImageSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <form id="run-form" class="row g-3 needs-validation" novalidate>
 
         <!-- API Key -->
@@ -931,6 +952,25 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="infoModalBody"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Модал перезапуска после обновления образа -->
+<div class="modal fade" id="restartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">Обновление применено</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="restartModalBody">
+                Озвучка запущена. Перезапустить, чтобы применить обновление?
+            </div>
+            <div class="modal-footer">
+                <button id="restartLaterBtn" type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Позже</button>
+                <button id="restartNowBtn" type="button" class="btn btn-primary">Перезапустить</button>
+            </div>
         </div>
     </div>
 </div>

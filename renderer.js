@@ -15,6 +15,13 @@ window.addEventListener('DOMContentLoaded', () => {
     const toastContainer = document.getElementById('toastContainer');
     const infoModal = new bootstrap.Modal(document.getElementById('infoModal'));
     const infoModalBody = document.getElementById('infoModalBody');
+    const updateBanner = document.getElementById('updateBanner');
+    const updateImageBtn = document.getElementById('updateImageBtn');
+    const updateImageSpinner = document.getElementById('updateImageSpinner');
+    const imageStatusEl = document.getElementById('imageStatus');
+    const restartModal = new bootstrap.Modal(document.getElementById('restartModal'));
+    const restartModalBody = document.getElementById('restartModalBody');
+    const restartNowBtn = document.getElementById('restartNowBtn');
     const themeToggle = document.getElementById('themeToggle');
     const closeBtn = document.getElementById('closeBtn');
     const minimizeBtn = document.getElementById('minimizeBtn');
@@ -33,6 +40,50 @@ window.addEventListener('DOMContentLoaded', () => {
     // --- запуск/остановка: защита от "поздних" событий от прошлых запусков ---
     let runSeq = 0;
     let activeRunToken = null;
+
+    // --- docker image update / restart flow ---
+    let lastRunCfg = null;        // последняя конфигурация запуска (для перезапуска)
+    let pendingRestartCfg = null; // если попросили перезапуск после stop
+
+    function setImageStatus(state, {quiet = true} = {}) {
+        if (!imageStatusEl) return;
+
+        // reset badge classes
+        imageStatusEl.classList.remove('text-bg-secondary', 'text-bg-success', 'text-bg-warning', 'text-bg-info', 'text-bg-danger', 'text-dark');
+
+        let text = 'Образ: ?';
+        let cls = 'text-bg-secondary';
+        let extra = '';
+
+        if (state === 'checking') {
+            text = 'Образ: проверка…';
+            cls = 'text-bg-info';
+        } else if (state === 'fresh') {
+            text = 'Образ: свежий';
+            cls = 'text-bg-success';
+        } else if (state === 'missing') {
+            text = 'Образ: не скачан';
+            cls = 'text-bg-danger';
+        } else if (state === 'stale') {
+            text = 'Образ: есть обновление';
+            cls = 'text-bg-warning';
+            extra = ' text-dark';
+        } else if (state === 'unknown') {
+            text = 'Образ: неизвестно';
+            cls = 'text-bg-secondary';
+        }
+
+        imageStatusEl.textContent = text;
+        imageStatusEl.classList.add(cls);
+        if (extra) imageStatusEl.classList.add('text-dark');
+
+        if (!quiet) {
+            // просто на будущее: если захочешь делать тосты отсюда
+        }
+    }
+
+    // начальное состояние
+    setImageStatus('unknown');
 
     // --- элементы доп. параметров ---
     const nJobsInput = document.getElementById('n_jobs');
@@ -823,6 +874,130 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // сбрасываем активный токен — поздние логи этого запуска нас уже не волнуют
         activeRunToken = null;
+
+        // если это был stop ради перезапуска — стартуем снова
+        if (reason === 'stopped' && pendingRestartCfg) {
+            const cfgToRestart = pendingRestartCfg;
+            pendingRestartCfg = null;
+            startFromSavedCfg(cfgToRestart);
+        }
+    });
+
+    function setUpdateBannerVisible(isVisible) {
+        if (!updateBanner) return;
+        updateBanner.classList.toggle('d-none', !isVisible);
+    }
+
+    async function startImagePull() {
+        if (!window.api?.pullImageUpdate) {
+            showToast('Обновление Docker-образа не поддерживается в этой сборке', 'warning');
+            return;
+        }
+        try {
+            updateImageBtn?.setAttribute('disabled', 'disabled');
+            updateImageSpinner?.classList.remove('d-none');
+            await window.api.pullImageUpdate();
+        } finally {
+            updateImageBtn?.removeAttribute('disabled');
+            updateImageSpinner?.classList.add('d-none');
+        }
+    }
+
+    updateImageBtn?.addEventListener('click', () => {
+        startImagePull().catch(() => {
+        });
+    });
+
+    // клик по статусу образа (справа сверху) — ручная проверка
+    imageStatusEl?.addEventListener('click', async () => {
+        if (!window.api?.checkImageUpdateNow) {
+            showToast('Проверка обновления недоступна в этой сборке', 'warning');
+            return;
+        }
+        try {
+            setImageStatus('checking');
+            await window.api.checkImageUpdateNow();
+        } catch {
+            // не шумим
+        }
+    });
+
+    // уведомления об обновлении docker-образа
+    window.api.onImageUpdate?.((p) => {
+        if (!p) return;
+
+        if (p.type === 'status' && p.state) {
+            setImageStatus(p.state);
+            return;
+        }
+
+        if (p.type === 'available') {
+            // показываем баннер с кнопкой
+            setUpdateBannerVisible(true);
+            if (p.message) showToast(p.message, 'warning');
+            return;
+        }
+
+        if (p.type === 'updated') {
+            // спрячем баннер, т.к. уже обновились
+            setUpdateBannerVisible(false);
+            if (p.message) showToast(p.message, 'success');
+            return;
+        }
+
+        if (p.type === 'restart-offer') {
+            // показать модалку: перезапуск
+            if (restartModalBody && p.message) restartModalBody.innerText = p.message;
+            restartModal?.show();
+            return;
+        }
+
+        if (p.type === 'pull-start') {
+            if (p.message) showToast(p.message, 'info');
+            return;
+        }
+
+        // дефолт
+        if (p.message) showToast(p.message, (p.type === 'danger') ? 'danger' : 'info');
+    });
+
+    function cloneCfgWithoutToken(cfg) {
+        if (!cfg) return null;
+        const copy = JSON.parse(JSON.stringify(cfg));
+        delete copy._runToken;
+        return copy;
+    }
+
+    function startFromSavedCfg(cfgNoToken) {
+        const base = cloneCfgWithoutToken(cfgNoToken);
+        if (!base || !base.mode) {
+            showToast('Не знаю, что перезапускать (нет последнего запуска)', 'warning');
+            return;
+        }
+        logsEl.textContent = '';
+        const token = startRun(base.mode);
+        const cfg = { ...base, _runToken: token };
+        lastRunCfg = cloneCfgWithoutToken(cfg);
+        window.api.runContainer(cfg);
+    }
+
+    restartNowBtn?.addEventListener('click', () => {
+        restartModal?.hide();
+
+        const target = cloneCfgWithoutToken(lastRunCfg);
+        if (!target) {
+            showToast('Не могу перезапустить: нет данных последнего запуска', 'warning');
+            return;
+        }
+
+        // если озвучка сейчас бежит — сначала остановим, потом поднимем снова
+        if (activeRunToken !== null) {
+            pendingRestartCfg = target;
+            showToast('Останавливаю озвучку…', 'info');
+            window.api.stopContainer();
+        } else {
+            startFromSavedCfg(target);
+        }
     });
 
     // Submit
@@ -883,6 +1058,7 @@ window.addEventListener('DOMContentLoaded', () => {
             vc_default_alpha: Number((vcAlphaNumber?.value ?? '0.6')),
             min_target_sec: Number((vcMinTargetNumber?.value ?? '3.0')),
         };
+        lastRunCfg = cloneCfgWithoutToken(cfg);
         logsEl.textContent += e + '\n';
         window.api.runContainer(cfg);
     };
@@ -919,6 +1095,7 @@ window.addEventListener('DOMContentLoaded', () => {
             mode: 'align',
             align_use_voice_len: true,
         };
+        lastRunCfg = cloneCfgWithoutToken(cfg);
         window.api.runContainer(cfg);
     };
 
@@ -931,6 +1108,7 @@ window.addEventListener('DOMContentLoaded', () => {
             _runToken: token,
             mode: 'mixing',
         };
+        lastRunCfg = cloneCfgWithoutToken(cfg);
         window.api.runContainer(cfg);
     };
 
