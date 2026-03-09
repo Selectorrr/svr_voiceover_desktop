@@ -722,8 +722,7 @@ window.addEventListener('DOMContentLoaded', () => {
         mixingSpinner.classList.add('d-none');
 
         // сброс прогресса
-        progressBar.style.width = '0%';
-        progressInline.classList.remove('d-none');
+        setProgressBarState(0, '');
         progressLabel.classList.add('d-none');
         progressLabel.innerText = '';
 
@@ -752,6 +751,9 @@ window.addEventListener('DOMContentLoaded', () => {
         mixingSpinner.classList.add('d-none');
 
         progressInline.classList.add('d-none');
+        setProgressBarState(0, '');
+        progressLabel.classList.add('d-none');
+        progressLabel.innerText = '';
     }
 
 
@@ -802,6 +804,19 @@ window.addEventListener('DOMContentLoaded', () => {
     let liveOverall = null;
     let liveJob = null;
     let liveDirty = false;
+    const overallProgressRe = /^\s*Общий\s+прогресс(?:\s*:)?(?:\s*\[\s*\d+\s*\/\s*\d+\s*\])?/i;
+    const overallProgressCountsRe = /Общий\s+прогресс(?:\s*:)?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*]/i;
+
+    function formatOverallProgressText(current, total) {
+        return `${current}/${total}п.`;
+    }
+
+    function setProgressBarState(pct) {
+        const safePct = Math.max(0, Math.min(100, Number(pct) || 0));
+        progressBar.style.width = safePct + '%';
+        progressBar.setAttribute('aria-valuenow', String(safePct));
+        progressInline.classList.remove('d-none');
+    }
 
     function stripAnsi(s) {
         return String(s ?? '')
@@ -884,6 +899,18 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- прогресс: игнорируем строки "Доступно ... символа: XX%|..." ---
+        const overall = line.match(overallProgressCountsRe);
+        if (overall) {
+            const current = Number(overall[1]) || 0;
+            const total = Number(overall[2]) || 0;
+            if (total > 0) {
+                const pct = Math.max(0, Math.min(100, Math.round((current / total) * 100)));
+                setProgressBarState(pct);
+                progressLabel.classList.remove('d-none');
+                progressLabel.innerText = formatOverallProgressText(current, total);
+            }
+        }
+
         const pm = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
         if (pm && !/Доступно\s+\d+\s+символ/.test(line)) {
             const pct = Number(pm[1]) || 0;
@@ -891,10 +918,13 @@ window.addEventListener('DOMContentLoaded', () => {
             const eta = pm[3];
             const rate = pm[4];
 
-            progressBar.style.width = pct + '%';
-            progressInline.classList.remove('d-none');
+            const overallMatch = liveOverall ? liveOverall.match(overallProgressCountsRe) : null;
+            const overallText = overallMatch
+                ? `, ${formatOverallProgressText(overallMatch[1], overallMatch[2])}`
+                : '';
+            setProgressBarState(pct);
             progressLabel.classList.remove('d-none');
-            progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}`;
+            progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}${overallText}`;
         }
     }
 
@@ -928,7 +958,7 @@ window.addEventListener('DOMContentLoaded', () => {
             // overwrite=true значит строка "живая" (перерисовывается) —
             // даже если мы не распознали tqdm, показываем её в live-слоте.
             if (isTqdm || overwrite) {
-                if (/^\s*Общий\s+прогресс\s*:/i.test(raw)) {
+                if (overallProgressRe.test(raw)) {
                     setLive('overall', raw);
                 } else if (/Доступно\s+\d+\s+символ/i.test(raw) || /\bjob_n\b/i.test(raw)) {
                     setLive('job', raw);
