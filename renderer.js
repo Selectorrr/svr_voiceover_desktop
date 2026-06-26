@@ -111,13 +111,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const nJobsAuto = document.getElementById('n_jobs_auto');
     const prosodyRange = document.getElementById('prosody_cond_range');
     const prosodyNumber = document.getElementById('prosody_cond');
-
-    // VC default alpha (показываем только когда vc_type=default)
-    const vcTypeSelect = document.getElementById('vc_type');
-    const vcAlphaWrap = document.getElementById('vc_default_alpha_wrap');
-    const vcAlphaRange = document.getElementById('vc_default_alpha_range');
-    const vcAlphaNumber = document.getElementById('vc_default_alpha');
-    const vcMinTargetNumber = document.getElementById('min_target_sec');
+    const prosodyMixRatioRange = document.getElementById('prosody_mix_ratio_range');
+    const prosodyMixRatioNumber = document.getElementById('prosody_mix_ratio');
 
     // Шкалы допусков по длине (центр = конец семпла)
     // Короткие
@@ -215,12 +210,9 @@ window.addEventListener('DOMContentLoaded', () => {
         setDefaultForEl(prosodyNumber);
         setDefaultForEl(prosodyRange);
         syncProsody('number');
-
-        // VC alpha
-        setDefaultForEl(vcAlphaNumber);
-        setDefaultForEl(vcAlphaRange);
-        syncVcAlpha('number');
-        updateVcAlphaVisibility();
+        setDefaultForEl(prosodyMixRatioNumber);
+        setDefaultForEl(prosodyMixRatioRange);
+        syncProsodyMixRatio('number');
 
         // возвращаем сохранённые поля
         if (apiEl) apiEl.value = keepApi;
@@ -253,20 +245,10 @@ window.addEventListener('DOMContentLoaded', () => {
         if (from === 'number') prosodyRange.value = prosodyNumber.value;
     }
 
-    function syncVcAlpha(from) {
-        if (!vcAlphaRange || !vcAlphaNumber) return;
-        if (from === 'range') vcAlphaNumber.value = vcAlphaRange.value;
-        if (from === 'number') vcAlphaRange.value = vcAlphaNumber.value;
-    }
-
-    function updateVcAlphaVisibility() {
-        if (!vcAlphaWrap || !vcTypeSelect) return;
-        const isDefault = (vcTypeSelect.value || '') === 'default';
-        vcAlphaWrap.style.display = isDefault ? '' : 'none';
-
-        // чтобы не мешались в табе и не выглядели активными
-        if (vcAlphaRange) vcAlphaRange.disabled = !isDefault;
-        if (vcAlphaNumber) vcAlphaNumber.disabled = !isDefault;
+    function syncProsodyMixRatio(from) {
+        if (!prosodyMixRatioRange || !prosodyMixRatioNumber) return;
+        if (from === 'range') prosodyMixRatioNumber.value = prosodyMixRatioRange.value;
+        if (from === 'number') prosodyMixRatioRange.value = prosodyMixRatioNumber.value;
     }
 
     // подтягиваем сохранённые настройки
@@ -294,31 +276,25 @@ window.addEventListener('DOMContentLoaded', () => {
         saveSettings();
     });
 
-    // VC default alpha
-    syncVcAlpha('number');
-    updateVcAlphaVisibility();
-    vcTypeSelect?.addEventListener('change', () => {
-        updateVcAlphaVisibility();
+    syncProsodyMixRatio('number');
+    prosodyMixRatioRange?.addEventListener('input', () => {
+        syncProsodyMixRatio('range');
         saveSettings();
     });
-    vcAlphaRange?.addEventListener('input', () => {
-        syncVcAlpha('range');
-        saveSettings();
-    });
-    vcAlphaNumber?.addEventListener('input', () => {
-        syncVcAlpha('number');
+    prosodyMixRatioNumber?.addEventListener('input', () => {
+        syncProsodyMixRatio('number');
         saveSettings();
     });
 
     // сохраняем основные поля
     const idsToPersist = [
-        'api_key', 'path_filter', 'ext', 'csv_delimiter', 'device', 'batch_size', 'tone_sample_len', 'is_respect_mos',
-        'put_yo',
-        'reinit_every', 'min_prosody_len', 'speed_clip_max', 'speed_clip_min', 'speed_adjust_step_pct',
+        'api_key', 'path_filter', 'ext', 'device', 'batch_size', 'tone_sample_len', 'is_respect_mos',
+        'put_yo', 'llm_pre_normalize_text', 'timbre_dir',
+        'reinit_every', 'min_prosody_len', 'prosody_mix_ratio', 'speed_clip_max', 'speed_clip_min', 'speed_adjust_step_pct',
         'speed_search_attempts', 'max_extra_speed',
         // допуски по длине результата
         'len_t_short', 'len_t_long', 'max_longer_pct_short', 'max_longer_pct_long', 'max_shorter_pct_short', 'max_shorter_pct_long',
-        'vc_type', 'vc_default_alpha', 'min_target_sec'
+        'vc_type', 'user_models_dir', 'dedup_csv', 'stress_api_timeout'
     ];
     idsToPersist.forEach(id => {
         const el = document.getElementById(id);
@@ -338,6 +314,7 @@ window.addEventListener('DOMContentLoaded', () => {
         out.n_jobs_auto = nJobsAuto?.checked ?? true;
         out.n_jobs = nJobsInput?.value ?? '';
         out.prosody_cond_range = prosodyRange?.value ?? '';
+        out.prosody_mix_ratio_range = prosodyMixRatioRange?.value ?? '';
         return out;
     }
 
@@ -680,10 +657,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Логи
     clearLogsBtn.onclick = () => {
-        logBuffer = [];
-        pendingLines = [];
-        logRemainder = '';
-        logsEl.textContent = '';
+        resetLogState();
     };
     copyLogsBtn.onclick = () => {
         navigator.clipboard.writeText(logsEl.textContent);
@@ -710,6 +684,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // UI state
     function startRun(mode) {
+        resetLogState();
         activeRunToken = ++runSeq;
         // выключаем все кнопки
         runBtn.disabled = true;
@@ -804,11 +779,38 @@ window.addEventListener('DOMContentLoaded', () => {
     let liveOverall = null;
     let liveJob = null;
     let liveDirty = false;
-    const overallProgressRe = /^\s*Общий\s+прогресс(?:\s*:)?(?:\s*\[\s*\d+\s*\/\s*\d+\s*\])?/i;
-    const overallProgressCountsRe = /Общий\s+прогресс(?:\s*:)?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*]/i;
+
+    function resetLogState() {
+        logBuffer = [];
+        pendingLines = [];
+        logRemainder = '';
+        liveOverall = null;
+        liveJob = null;
+        logsDirty = false;
+        liveDirty = false;
+        flushScheduled = false;
+        logsEl.textContent = '';
+    }
+
+    const overallProgressRe = /^\s*Общий\s+прогресс(?:\s*\(батчи\))?/i;
+
+    function parseOverallReplicProgress(line) {
+        if (!overallProgressRe.test(line)) return null;
+        // tqdm: "Общий прогресс:  12%|████| 24/200 [01:30<11:00, 0.27репл/s]"
+        const tqdmCounts = line.match(/Общий\s+прогресс[\s\S]*?(\d+)\s*\/\s*(\d+)\s*\[/i);
+        if (tqdmCounts) {
+            return {current: Number(tqdmCounts[1]) || 0, total: Number(tqdmCounts[2]) || 0};
+        }
+        // запасной формат: "Общий прогресс: [24/200]"
+        const bracketCounts = line.match(/Общий\s+прогресс(?:\s*:)?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*]/i);
+        if (bracketCounts) {
+            return {current: Number(bracketCounts[1]) || 0, total: Number(bracketCounts[2]) || 0};
+        }
+        return null;
+    }
 
     function formatOverallProgressText(current, total) {
-        return `${current}/${total}п.`;
+        return `${current}/${total} репл`;
     }
 
     function setProgressBarState(pct) {
@@ -898,33 +900,14 @@ window.addEventListener('DOMContentLoaded', () => {
             // ВАЖНО: не выходим, но ниже при парсинге прогресса эту строку отфильтруем
         }
 
-        // --- прогресс: игнорируем строки "Доступно ... символа: XX%|..." ---
-        const overall = line.match(overallProgressCountsRe);
-        if (overall) {
-            const current = Number(overall[1]) || 0;
-            const total = Number(overall[2]) || 0;
-            if (total > 0) {
-                const pct = Math.max(0, Math.min(100, Math.round((current / total) * 100)));
-                setProgressBarState(pct);
-                progressLabel.classList.remove('d-none');
-                progressLabel.innerText = formatOverallProgressText(current, total);
-            }
-        }
-
-        const pm = line.match(/(\d+)%\|.*\[\s*([0-9:]+)<([^,]+),\s*([^\]]+)]/);
-        if (pm && !/Доступно\s+\d+\s+символ/.test(line)) {
-            const pct = Number(pm[1]) || 0;
-            const elapsed = pm[2];
-            const eta = pm[3];
-            const rate = pm[4];
-
-            const overallMatch = liveOverall ? liveOverall.match(overallProgressCountsRe) : null;
-            const overallText = overallMatch
-                ? `, ${formatOverallProgressText(overallMatch[1], overallMatch[2])}`
-                : '';
+        // --- прогресс по репликам: только строка "Общий прогресс" из PipelineModule ---
+        const overallProgress = parseOverallReplicProgress(line);
+        if (overallProgress && overallProgress.total > 0) {
+            const {current, total} = overallProgress;
+            const pct = Math.max(0, Math.min(100, Math.round((current / total) * 100)));
             setProgressBarState(pct);
             progressLabel.classList.remove('d-none');
-            progressLabel.innerText = `${pct}% — ${elapsed}<${eta}, ${rate}${overallText}`;
+            progressLabel.innerText = formatOverallProgressText(current, total);
         }
     }
 
@@ -960,8 +943,6 @@ window.addEventListener('DOMContentLoaded', () => {
             if (isTqdm || overwrite) {
                 if (overallProgressRe.test(raw)) {
                     setLive('overall', raw);
-                } else if (/Доступно\s+\d+\s+символ/i.test(raw) || /\bjob_n\b/i.test(raw)) {
-                    setLive('job', raw);
                 } else {
                     setLive('job', raw);
                 }
@@ -1163,7 +1144,6 @@ window.addEventListener('DOMContentLoaded', () => {
             showToast('Не знаю, что перезапускать (нет последнего запуска)', 'warning');
             return;
         }
-        logsEl.textContent = '';
         const token = startRun(base.mode);
         const cfg = { ...base, _runToken: token };
         lastRunCfg = cloneCfgWithoutToken(cfg);
@@ -1200,7 +1180,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         if (!form.checkValidity()) return form.classList.add('was-validated');
         form.classList.remove('was-validated');
-        logsEl.textContent = '';
         const token = startRun('synthesize');
 
         const device = document.getElementById('device').value;
@@ -1217,17 +1196,18 @@ window.addEventListener('DOMContentLoaded', () => {
             ext: document.getElementById('ext').value,
             batch_size: Number(document.getElementById('batch_size').value),
             n_jobs: (nJobsAuto && nJobsAuto.checked) ? null : Number(nJobsInput.value),
-            csv_delimiter: document.getElementById('csv_delimiter').value,
             workdir: workdirInput.value || null,
             providers,
 
-            // --- недостающие параметры entrypoint.py ---
             tone_sample_len: Number(document.getElementById('tone_sample_len').value),
             is_respect_mos: document.getElementById('is_respect_mos').checked,
             put_yo: document.getElementById('put_yo')?.checked ?? true,
+            llm_pre_normalize_text: document.getElementById('llm_pre_normalize_text')?.checked ?? false,
+            timbre_dir: document.getElementById('timbre_dir').value,
 
             reinit_every: Number(document.getElementById('reinit_every').value),
             prosody_cond: Number(prosodyNumber.value),
+            prosody_mix_ratio: Number(prosodyMixRatioNumber.value),
             min_prosody_len: Number(document.getElementById('min_prosody_len').value),
             speed_search_attempts: Number(document.getElementById('speed_search_attempts').value),
             speed_adjust_step_pct: Number(document.getElementById('speed_adjust_step_pct').value),
@@ -1244,11 +1224,11 @@ window.addEventListener('DOMContentLoaded', () => {
             max_shorter_pct_long: Number(document.getElementById('max_shorter_pct_long').value),
 
             vc_type: document.getElementById('vc_type').value,
-            vc_default_alpha: Number((vcAlphaNumber?.value ?? '0.6')),
-            min_target_sec: Number((vcMinTargetNumber?.value ?? '3.0')),
+            user_models_dir: document.getElementById('user_models_dir').value,
+            dedup_csv: document.getElementById('dedup_csv').value,
+            stress_api_timeout: Number(document.getElementById('stress_api_timeout').value),
         };
         lastRunCfg = cloneCfgWithoutToken(cfg);
-        logsEl.textContent += e + '\n';
         window.api.runContainer(cfg);
     };
 
@@ -1268,7 +1248,6 @@ window.addEventListener('DOMContentLoaded', () => {
             : ['CPUExecutionProvider'];
         return {
             workdir: workdirInput.value || null,
-            csv_delimiter: document.getElementById('csv_delimiter').value,
             providers,
             // api_key тут не нужен, скрипты align/mixing его не используют
         };
@@ -1276,7 +1255,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     alignBtn.onclick = () => {
         if (!ensureWorkdirOrToast()) return;
-        logsEl.textContent = '';
         const token = startRun('align');
         const cfg = {
             ...buildBaseCfg(),
@@ -1290,7 +1268,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     mixingBtn.onclick = () => {
         if (!ensureWorkdirOrToast()) return;
-        logsEl.textContent = '';
         const token = startRun('mixing');
         const cfg = {
             ...buildBaseCfg(),

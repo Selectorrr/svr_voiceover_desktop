@@ -453,7 +453,6 @@ async function runContainer(cfg) {
                 '--api_key', cfg.api_key,
                 '--ext', cfg.ext,
                 '--batch_size', String(cfg.batch_size),
-                '--csv_delimiter', cfg.csv_delimiter || ',',
                 '--path_filter', cfg.path_filter || '',
             ];
 
@@ -465,9 +464,12 @@ async function runContainer(cfg) {
             else args.push('--is_respect_mos');
 
             pushArg(args, '--put_yo', cfg.put_yo);
+            pushArg(args, '--llm_pre_normalize_text', cfg.llm_pre_normalize_text);
             pushArg(args, '--tone_sample_len', cfg.tone_sample_len);
+            pushArg(args, '--timbre_dir', cfg.timbre_dir);
             pushArg(args, '--reinit_every', cfg.reinit_every);
             pushArg(args, '--prosody_cond', cfg.prosody_cond);
+            pushArg(args, '--prosody_mix_ratio', cfg.prosody_mix_ratio);
             pushArg(args, '--min_prosody_len', cfg.min_prosody_len);
             pushArg(args, '--speed_search_attempts', cfg.speed_search_attempts);
             pushArg(args, '--speed_adjust_step_pct', cfg.speed_adjust_step_pct);
@@ -483,6 +485,9 @@ async function runContainer(cfg) {
             pushArg(args, '--max_shorter_pct_short', cfg.max_shorter_pct_short);
             pushArg(args, '--max_shorter_pct_long', cfg.max_shorter_pct_long);
             pushArg(args, '--vc_type', cfg.vc_type);
+            pushArg(args, '--user_models_dir', cfg.user_models_dir);
+            pushArg(args, '--dedup_csv', cfg.dedup_csv);
+            pushArg(args, '--stress_api_timeout', cfg.stress_api_timeout);
 
             sendLog(`Аргументы entrypoint: ${args.join(' ')}`);
 
